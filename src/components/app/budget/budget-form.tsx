@@ -19,6 +19,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, Sparkles, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
