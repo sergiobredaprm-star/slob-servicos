@@ -32,9 +32,12 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { useState, useTransition } from 'react';
-import { getTaskSuggestionsAction } from '@/app/actions';
+import { getTaskSuggestionsAction, saveBudget } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { Budget } from '@/lib/types';
+
 
 const formSchema = z.object({
   clientName: z.string().min(2, {
@@ -57,11 +60,13 @@ const formSchema = z.object({
 });
 
 export function BudgetForm() {
+  const router = useRouter();
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(),
     to: addDays(new Date(), 5),
   });
   const [isAiPending, startAiTransition] = useTransition();
+  const [isSubmitPending, startSubmitTransition] = useTransition();
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { toast } = useToast();
 
@@ -80,11 +85,32 @@ export function BudgetForm() {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log(values);
-    toast({
-      title: 'Orçamento Criado!',
-      description: 'O novo orçamento foi salvo com sucesso.',
-      className: 'bg-accent text-accent-foreground',
+    startSubmitTransition(async () => {
+       const workDays = values.period?.from && values.period?.to ? differenceInCalendarDays(values.period.to, values.period.from) + 1 : 0;
+       const total = workDays * values.dailyRate;
+
+      const budgetData: Omit<Budget, 'id'> = {
+        ...values,
+        total: total,
+        status: 'ativo',
+        userId: 'temp-user-id' // Placeholder, will be replaced with real auth user
+      };
+
+      try {
+        await saveBudget(budgetData);
+        toast({
+          title: 'Orçamento Criado!',
+          description: 'O novo orçamento foi salvo com sucesso.',
+          className: 'bg-accent text-accent-foreground',
+        });
+        router.push('/orcamentos');
+      } catch (error) {
+         toast({
+          variant: 'destructive',
+          title: 'Erro ao Salvar',
+          description: 'Não foi possível salvar o orçamento. Tente novamente.',
+        });
+      }
     });
   };
 
@@ -288,7 +314,10 @@ export function BudgetForm() {
             </CardContent>
         </Card>
 
-        <Button type="submit">Criar Orçamento</Button>
+        <Button type="submit" disabled={isSubmitPending}>
+          {isSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Criar Orçamento
+        </Button>
       </form>
     </Form>
   );

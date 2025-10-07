@@ -1,12 +1,20 @@
-export type BudgetStatus = "ativo" | "concluído" | "cancelado";
+import { Timestamp } from 'firebase/firestore';
+
+export type BudgetStatus = 'ativo' | 'concluído' | 'cancelado';
 
 export type Budget = {
-  id: string;
+  id?: string;
   clientName: string;
+  clientDescription?: string;
   task: string;
+  dailyRate: number;
+  period: {
+    from: Date | Timestamp;
+    to: Date | Timestamp;
+  };
   total: number;
   status: BudgetStatus;
-  email: string;
+  userId: string;
 };
 
 export type DailyRateSettings = {
