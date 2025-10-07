@@ -1,3 +1,5 @@
+'use client';
+
 import { budgets } from '@/lib/data';
 import { Budget, BudgetStatus } from '@/lib/types';
 import {
