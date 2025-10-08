@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
     }
     return NextResponse.json({ isAuthenticated: false });
   } catch (error) {
-    if (error instanceof Error && error.message.includes("initialization failed")) {
-         return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error instanceof Error && error.message.includes("credential")) {
+         return NextResponse.json({ error: "Falha na inicialização do Firebase Admin. Verifique as credenciais do servidor." }, { status: 500 });
     }
     // Para outros erros (ex: cookie inválido), consideramos como não autenticado
     return NextResponse.json({ isAuthenticated: false });
@@ -61,11 +61,11 @@ export async function POST(request: NextRequest) {
     return response;
 
   } catch (error: any) {
-    console.error('Session login error:', error.message);
-    const errorMessage = error.message.includes("initialization failed") 
-      ? "Firebase Admin SDK initialization failed."
-      : "Failed to create session.";
-    const status = error.message.includes("initialization failed") ? 500 : 401;
+    console.error('Session login error:', error);
+    const errorMessage = error.message.includes("credential") 
+      ? "Falha na inicialização do Firebase Admin. Verifique as credenciais do servidor."
+      : "Falha ao criar a sessão.";
+    const status = error.message.includes("credential") ? 500 : 401;
 
     return NextResponse.json({ error: errorMessage, details: error.message }, { status });
   }
