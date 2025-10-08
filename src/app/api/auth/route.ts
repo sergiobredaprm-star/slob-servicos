@@ -1,3 +1,4 @@
+'use client';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeFirebaseAdmin } from './_firebase-admin';
