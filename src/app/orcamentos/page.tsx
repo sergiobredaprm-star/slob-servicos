@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -30,7 +30,19 @@ import {
 import Link from 'next/link';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
-import { Timestamp } from 'firebase/firestore';
+import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { deleteBudget } from '@/lib/firebase/services';
 
 const statusStyles: { [key in BudgetStatus]: string } = {
   ativo: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
@@ -48,6 +60,9 @@ const formatCurrency = (value: number) => {
 
 export default function OrcamentosPage() {
   const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
 
   const budgetsQuery = useMemoFirebase(() => 
     user && firestore ? query(collection(firestore, 'users', user.uid, 'budgets')) : null
@@ -64,6 +79,32 @@ export default function OrcamentosPage() {
     if (budget.task) return budget.task;
     return 'Tarefa não informada';
   }
+  
+  const handleDeleteClick = (budgetId: string) => {
+    setSelectedBudgetId(budgetId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedBudgetId || !user || !firestore) return;
+    try {
+      await deleteBudget(firestore, user.uid, selectedBudgetId);
+      toast({
+        title: 'Orçamento Deletado',
+        description: 'O orçamento foi removido com sucesso.',
+      });
+    } catch (error) {
+       toast({
+        variant: 'destructive',
+        title: 'Erro ao Deletar',
+        description: 'Não foi possível remover o orçamento.',
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setSelectedBudgetId(null);
+    }
+  };
+
 
   return (
     <div className="space-y-4">
@@ -133,9 +174,18 @@ export default function OrcamentosPage() {
                           Copiar ID
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/orcamentos/${budget.id}`}>Ver detalhes</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                           <Link href={`/orcamentos/${budget.id}/editar`}>Editar</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => handleDeleteClick(budget.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
                           Deletar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -148,6 +198,21 @@ export default function OrcamentosPage() {
           </Table>
         </CardContent>
       </Card>
+       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita. Isso excluirá permanentemente o
+              orçamento e removerá seus dados de nossos servidores.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Deletar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

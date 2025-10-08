@@ -4,7 +4,7 @@ export type BudgetStatus = 'ativo' | 'concluído' | 'cancelado';
 export type BudgetType = 'daily' | 'task';
 
 export type Budget = {
-  id?: string;
+  id: string;
   clientName: string;
   clientDescription?: string;
   task: string;

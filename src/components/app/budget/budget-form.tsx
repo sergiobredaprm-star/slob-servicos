@@ -31,7 +31,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { getTaskSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
@@ -55,12 +55,13 @@ const formSchema = z.object({
   }),
   period: z
     .object({
-      from: z.date(),
-      to: z.date(),
+      from: z.date().optional(),
+      to: z.date().optional(),
     })
     .optional(),
   dailyRate: z.coerce.number().optional(),
   total: z.coerce.number().optional(),
+  status: z.enum(['ativo', 'concluído', 'cancelado']),
 }).refine(data => {
   if (data.budgetType === 'daily') {
     return !!data.period && !!data.dailyRate && data.dailyRate > 0 && !!data.period.from && !!data.period.to && data.period.from < data.period.to;
@@ -79,24 +80,31 @@ const formSchema = z.object({
     path: ['budgetType'],
 });
 
+type BudgetFormProps = {
+  initialData?: Budget;
+  budgetId?: string;
+};
 
-export function BudgetForm() {
+export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const router = useRouter();
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(),
-    to: addDays(new Date(), 5),
-  });
-  const [deadline, setDeadline] = useState<Date | undefined>();
+  const { toast } = useToast();
+  
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitPending, startSubmitTransition] = useTransition();
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const { toast } = useToast();
-
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: initialData ? {
+      ...initialData,
+       period: {
+        from: initialData.period?.from as Date | undefined,
+        to: initialData.period?.to as Date | undefined,
+      },
+      deadline: initialData.deadline as Date | undefined,
+    } : {
       clientName: '',
       clientDescription: '',
       task: '',
@@ -107,26 +115,21 @@ export function BudgetForm() {
         to: addDays(new Date(), 5),
       },
       total: 0,
+      status: 'ativo',
     },
   });
+  
+  const [date, setDate] = useState<DateRange | undefined>(form.getValues('period'));
+  const [deadline, setDeadline] = useState<Date | undefined>(form.getValues('deadline'));
 
   const budgetType = form.watch('budgetType');
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!user) {
+    if (!user || !firestore) {
       toast({
         variant: 'destructive',
-        title: 'Erro de Autenticação',
-        description: 'Você precisa estar logado para criar um orçamento.',
-      });
-      return;
-    }
-
-    if (!firestore) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro de Configuração',
-        description: 'O Firestore não está disponível. Verifique sua conexão.',
+        title: 'Erro',
+        description: 'Você precisa estar logado e o Firestore deve estar disponível.',
       });
       return;
     }
@@ -140,7 +143,7 @@ export function BudgetForm() {
         finalTotal = values.total;
       }
 
-      const budgetData: Omit<Budget, 'id' | 'userId'> = {
+      const budgetData: Omit<Budget, 'id'> = {
         clientName: values.clientName,
         clientDescription: values.clientDescription,
         task: values.task,
@@ -149,14 +152,15 @@ export function BudgetForm() {
         period: values.period,
         deadline: values.deadline,
         total: finalTotal,
-        status: 'ativo',
+        status: values.status,
+        userId: user.uid,
       };
 
       try {
-        await saveBudget(firestore, user.uid, budgetData);
+        await saveBudget(firestore, user.uid, budgetData, budgetId);
         toast({
-          title: 'Orçamento Criado!',
-          description: 'O novo orçamento foi salvo com sucesso.',
+          title: `Orçamento ${budgetId ? 'Atualizado' : 'Criado'}!`,
+          description: `O orçamento foi salvo com sucesso.`,
           className: 'bg-accent text-accent-foreground',
         });
         router.push('/orcamentos');
@@ -164,7 +168,7 @@ export function BudgetForm() {
          toast({
           variant: 'destructive',
           title: 'Erro ao Salvar',
-          description: 'Não foi possível salvar o orçamento. Tente novamente.',
+          description: `Não foi possível salvar o orçamento. Tente novamente.`,
         });
       }
     });
@@ -363,6 +367,46 @@ export function BudgetForm() {
             </FormItem>
           )}
         />
+        
+        {budgetId && (
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Status do Orçamento</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex space-x-4"
+                    >
+                      <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="ativo" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Ativo</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="concluído" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Concluído</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="cancelado" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Cancelado</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        )}
+
 
         {budgetType === 'daily' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -376,6 +420,7 @@ export function BudgetForm() {
                       <PopoverTrigger asChild>
                       <FormControl>
                           <Button
+                          id="date"
                           variant={'outline'}
                           className={cn(
                               'pl-3 text-left font-normal',
@@ -476,7 +521,7 @@ export function BudgetForm() {
 
         <Button type="submit" disabled={isSubmitPending}>
           {isSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Criar Orçamento
+          {budgetId ? 'Salvar Alterações' : 'Criar Orçamento'}
         </Button>
       </form>
     </Form>
