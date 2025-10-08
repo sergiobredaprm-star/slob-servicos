@@ -65,7 +65,6 @@ export default function SignupPage() {
           description: 'Você será redirecionado para o painel.',
         });
         router.push('/');
-        router.refresh();
       }
     });
   }

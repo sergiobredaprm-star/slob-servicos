@@ -66,7 +66,6 @@ export default function LoginPage() {
           description: 'Você será redirecionado para o painel.',
         });
         router.push('/');
-        router.refresh();
       }
     });
   }
