@@ -12,19 +12,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { useAuth, useUser } from '@/firebase';
-import { useEffect } from 'react';
-import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
+import { useRouter } from 'next/navigation';
+import { signOutUser } from '@/firebase/auth/auth-service';
+
 
 export function UserNav() {
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const auth = useAuth();
+  const router = useRouter();
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      initiateAnonymousSignIn(auth);
-    }
-  }, [user, isUserLoading, auth]);
-
+  const handleSignOut = async () => {
+    await signOutUser(auth);
+    router.push('/login');
+    router.refresh();
+  };
 
   return (
     <DropdownMenu>
@@ -36,16 +37,16 @@ export function UserNav() {
               alt="Avatar do usuário"
               data-ai-hint="user avatar"
             />
-            <AvatarFallback>{user?.displayName ? user.displayName.substring(0,2) : 'JD'}</AvatarFallback>
+            <AvatarFallback>{user?.displayName ? user.displayName.substring(0,2) : user?.email?.substring(0,2).toUpperCase() ?? 'U'}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user?.displayName ?? 'John Doe'}</p>
+            <p className="text-sm font-medium leading-none">{user?.displayName ?? 'Usuário'}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {user?.email ?? 'Usuário Anônimo'}
+              {user?.email ?? ''}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -56,7 +57,7 @@ export function UserNav() {
           <DropdownMenuItem>Configurações</DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>Sair</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSignOut}>Sair</DropdownMenuItem>
         <DropdownMenuSeparator />
         <div className="p-2">
           <ThemeToggle />

@@ -4,7 +4,8 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { listenForTokenChanges } from './auth/auth-service';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -62,7 +63,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   auth,
 }) => {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
-    user: null,
+    user: auth.currentUser, // Initialize with current user if available
     isUserLoading: true, // Start loading until first auth event
     userError: null,
   });
@@ -74,9 +75,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
 
-    setUserAuthState({ user: null, isUserLoading: true, userError: null }); // Reset on auth instance change
-
-    const unsubscribe = onAuthStateChanged(
+    // This handles client-side session persistence.
+    const unsubscribeAuthState = onAuthStateChanged(
       auth,
       (firebaseUser) => { // Auth state determined
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
@@ -86,7 +86,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
       }
     );
-    return () => unsubscribe(); // Cleanup
+
+    // This handles syncing the client token with the server-side session.
+    const unsubscribeIdToken = listenForTokenChanges(auth);
+
+
+    return () => {
+        unsubscribeAuthState();
+        unsubscribeIdToken();
+    }
   }, [auth]); // Depends on the auth instance
 
   // Memoize the context value

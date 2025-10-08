@@ -14,6 +14,8 @@ import { MainNav } from '@/components/app/main-nav';
 import { UserNav } from '@/components/app/user-nav';
 import { Logo } from '@/components/app/logo';
 import { FirebaseClientProvider } from '@/firebase';
+import { cookies } from 'next/headers';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'OrçaDiária',
@@ -25,6 +27,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = cookies().get('session');
+
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
@@ -40,36 +44,42 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <FirebaseClientProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            storageKey="orcadia-theme"
-          >
-            <SidebarProvider>
-              <Sidebar>
-                <SidebarHeader className="p-4">
-                  <Logo />
-                </SidebarHeader>
-                <SidebarContent>
-                  <MainNav />
-                </SidebarContent>
-              </Sidebar>
-              <SidebarInset>
-                <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background/95 px-4 backdrop-blur-sm sm:h-16 sm:px-6">
-                  <div className="md:hidden">
-                    <SidebarTrigger />
-                  </div>
-                  <div className="flex-1" />
-                  <UserNav />
-                </header>
-                <main className="flex-1 p-4 sm:p-6">{children}</main>
-              </SidebarInset>
-            </SidebarProvider>
-            <Toaster />
-          </ThemeProvider>
-        </FirebaseClientProvider>
+        <Suspense fallback={<div>Carregando...</div>}>
+          <FirebaseClientProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              storageKey="orcadia-theme"
+            >
+              {session ? (
+                 <SidebarProvider>
+                  <Sidebar>
+                    <SidebarHeader className="p-4">
+                      <Logo />
+                    </SidebarHeader>
+                    <SidebarContent>
+                      <MainNav />
+                    </SidebarContent>
+                  </Sidebar>
+                  <SidebarInset>
+                    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background/95 px-4 backdrop-blur-sm sm:h-16 sm:px-6">
+                      <div className="md:hidden">
+                        <SidebarTrigger />
+                      </div>
+                      <div className="flex-1" />
+                      <UserNav />
+                    </header>
+                    <main className="flex-1 p-4 sm:p-6">{children}</main>
+                  </SidebarInset>
+                </SidebarProvider>
+              ) : (
+                <main>{children}</main>
+              )}
+              <Toaster />
+            </ThemeProvider>
+          </FirebaseClientProvider>
+        </Suspense>
       </body>
     </html>
   );
