@@ -8,14 +8,8 @@ let adminAuth: ReturnType<typeof getAuth> | undefined;
 
 function ensureAdminAuth() {
   if (!adminAuth) {
-    try {
-      const adminApp = initializeFirebaseAdmin();
-      adminAuth = getAuth(adminApp);
-    } catch (error: any) {
-      console.error("Failed to initialize Firebase Admin SDK in route handler:", error.message);
-      // Lança um erro para ser capturado nas funções de rota.
-      throw new Error("Firebase Admin SDK initialization failed.");
-    }
+    const adminApp = initializeFirebaseAdmin();
+    adminAuth = getAuth(adminApp);
   }
   return adminAuth;
 }
@@ -90,5 +84,5 @@ async function DELETE(request: NextRequest) {
   return response;
 }
 
-// Exporta os manipuladores
+// Exporta os manipuladores no nível superior do módulo
 export { GET, POST, DELETE };
