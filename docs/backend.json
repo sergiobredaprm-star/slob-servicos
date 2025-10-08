@@ -1,70 +1,207 @@
 {
   "entities": {
-    "Budget": {
-      "title": "Budget",
-      "description": "Represents a budget for a client's task.",
+    "Client": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Client",
       "type": "object",
+      "description": "Represents a client for whom budgets are created.",
       "properties": {
-        "clientName": {
+        "id": {
           "type": "string",
-          "description": "The name of the client."
+          "description": "Unique identifier for the client."
         },
-        "clientDescription": {
+        "name": {
           "type": "string",
-          "description": "A description of the client and their needs."
+          "description": "Name of the client."
         },
-        "task": {
+        "contactEmail": {
           "type": "string",
-          "description": "The task to be performed."
+          "description": "Email address of the client for contact purposes.",
+          "format": "email"
         },
-        "budgetType": {
-            "type": "string",
-            "description": "The type of budget, either 'daily' or 'task'.",
-            "enum": ["daily", "task"]
+        "contactPhone": {
+          "type": "string",
+          "description": "Phone number of the client for contact purposes."
         },
-        "dailyRate": {
+        "notes": {
+          "type": "string",
+          "description": "Any additional notes or information about the client."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Budget": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Budget",
+      "type": "object",
+      "description": "Represents a budget created for a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the budget."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity. (Relationship: Client 1:N Budget)"
+        },
+        "taskDescription": {
+          "type": "string",
+          "description": "Description of the task to be performed."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Start date of the work period.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "End date of the work period.",
+          "format": "date-time"
+        },
+        "dailyRateId": {
+          "type": "string",
+          "description": "Reference to the DailyRate entity. (Relationship: DailyRate 1:N Budget)"
+        },
+        "totalAmount": {
           "type": "number",
-          "description": "The daily rate for the work."
-        },
-        "period": {
-          "type": "object",
-          "properties": {
-            "from": {
-              "type": "string",
-              "format": "date-time"
-            },
-            "to": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        },
-        "total": {
-          "type": "number",
-          "description": "The total cost of the budget."
+          "description": "Total amount of the budget, calculated automatically."
         },
         "status": {
           "type": "string",
-          "description": "The status of the budget.",
-          "enum": ["ativo", "concluído", "cancelado"]
+          "description": "Status of the budget (e.g., active, completed, canceled)."
         },
-        "userId": {
+        "notes": {
           "type": "string",
-          "description": "The ID of the user who created the budget."
+          "description": "Additional notes or comments related to the budget."
         }
       },
-      "required": ["clientName", "task", "total", "status", "userId", "budgetType"]
+      "required": [
+        "id",
+        "clientId",
+        "taskDescription",
+        "startDate",
+        "endDate",
+        "dailyRateId",
+        "totalAmount",
+        "status"
+      ]
+    },
+    "DailyRate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DailyRate",
+      "type": "object",
+      "description": "Represents the configuration for a daily rate.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the daily rate configuration."
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Start time of the daily work period."
+        },
+        "endTime": {
+          "type": "string",
+          "description": "End time of the daily work period."
+        },
+        "totalHours": {
+          "type": "number",
+          "description": "Total working hours per day, including breaks."
+        },
+        "dailyValue": {
+          "type": "number",
+          "description": "Monetary value of the daily rate."
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description of the daily rate configuration."
+        }
+      },
+      "required": [
+        "id",
+        "startTime",
+        "endTime",
+        "totalHours",
+        "dailyValue"
+      ]
     }
   },
   "auth": {
-    "providers": ["anonymous"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/budgets/{budgetId}": {
-      "schema": {
-        "$ref": "#/entities/Budget"
+    "structure": [
+      {
+        "path": "/users/{userId}/clients/{clientId}",
+        "definition": {
+          "entityName": "Client",
+          "schema": {
+            "$ref": "#/backend/entities/Client"
+          },
+          "description": "Stores client data, owned by the user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns the client."
+            },
+            {
+              "name": "clientId",
+              "description": "The ID of the client."
+            }
+          ]
+        }
       },
-      "description": "Stores budget documents."
-    }
+      {
+        "path": "/users/{userId}/clients/{clientId}/budgets/{budgetId}",
+        "definition": {
+          "entityName": "Budget",
+          "schema": {
+            "$ref": "#/backend/entities/Budget"
+          },
+          "description": "Stores budget data, associated with a client and owned by the user. Includes denormalized 'userId' and 'clientId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns the budget."
+            },
+            {
+              "name": "clientId",
+              "description": "The ID of the client associated with the budget."
+            },
+            {
+              "name": "budgetId",
+              "description": "The ID of the budget."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/dailyRates/{dailyRateId}",
+        "definition": {
+          "entityName": "DailyRate",
+          "schema": {
+            "$ref": "#/backend/entities/DailyRate"
+          },
+          "description": "Stores daily rate configurations, owned by the user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns the daily rate configuration."
+            },
+            {
+              "name": "dailyRateId",
+              "description": "The ID of the daily rate configuration."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to be secure, scalable, and easily debuggable, following the core design principles and strategy mandates. It avoids hierarchical authorization dependencies (`get()` calls) by denormalizing authorization data, ensuring atomic operations and simplified debugging. The structure also ensures that all documents in a collection share the same security requirements. Access modeling is standardized with path-based ownership for user-owned data and membership maps for collaborative data.\n\nClients are stored under `/users/{userId}/clients/{clientId}` to ensure path-based ownership. Budgets, which are 1:N with Clients, are stored under `/users/{userId}/clients/{clientId}/budgets/{budgetId}` for similar path-based ownership. DailyRates are stored under `/users/{userId}/dailyRates/{dailyRateId}`. This structure allows for simple, robust, and easily debuggable security rules based solely on `request.auth.uid` and the document path. The QAPs are supported by this segregation, ensuring secure `list` operations, enforcing invariants such as ownership and timestamps, and maintaining data clarity through explicit state modeling and predictable schema.\n\nAuthorization Independence is achieved by structuring data in a way that access control can be determined without needing to `get()` data from parent documents. For example, a `budget` is owned by a user because it resides in a path owned by the user. This supports QAPs by ensuring the security rules don't act as filters. The path itself determines the user's access. Finally, the structure allows for easy debugging because the authorization intent is explicit through the path and field names."
   }
 }
