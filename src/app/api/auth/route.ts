@@ -1,4 +1,3 @@
-'use client';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeFirebaseAdmin } from './_firebase-admin';
@@ -16,7 +15,7 @@ function ensureAdminAuth() {
 }
 
 // Funções do manipulador de rota
-async function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     const auth = ensureAdminAuth();
     const sessionCookie = request.cookies.get('session')?.value;
@@ -34,7 +33,7 @@ async function GET(request: NextRequest) {
   }
 }
 
-async function POST(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const auth = ensureAdminAuth();
     const body = await request.json();
@@ -72,7 +71,7 @@ async function POST(request: NextRequest) {
   }
 }
 
-async function DELETE(request: NextRequest) {
+export async function DELETE(request: NextRequest) {
   const options = {
     name: 'session',
     value: '',
@@ -84,6 +83,3 @@ async function DELETE(request: NextRequest) {
 
   return response;
 }
-
-// Exporta os manipuladores no nível superior do módulo
-export { GET, POST, DELETE };
