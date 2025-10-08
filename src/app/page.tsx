@@ -15,6 +15,7 @@ import { RecentBudgets } from '@/components/app/dashboard/recent-budgets';
 import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
 import { ReportsTab } from '@/components/app/dashboard/reports-tab';
+import { StatusDistributionChart } from '@/components/app/dashboard/status-distribution-chart';
 
 export default function DashboardPage() {
   return (
@@ -66,7 +67,7 @@ export default function DashboardPage() {
           </div>
         </TabsContent>
         <TabsContent value="analytics" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-7">
               <CardHeader>
                 <CardTitle>Analytics</CardTitle>
@@ -75,7 +76,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p>Em breve...</p>
+                <StatusDistributionChart />
               </CardContent>
             </Card>
           </div>
