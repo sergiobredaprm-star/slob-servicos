@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -37,7 +37,7 @@ import {
   getDocs,
   Timestamp,
 } from 'firebase/firestore';
-import { Budget } from '@/lib/types';
+import { Budget, CompanyProfile } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -48,6 +48,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { BudgetStatus } from '@/lib/types';
+import { getCompanyProfile } from '@/lib/firebase/company-services';
 
 const statusStyles: { [key in BudgetStatus]: string } = {
   ativo: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
@@ -88,7 +89,20 @@ export function ReportsTab() {
     to: new Date(),
   });
   const [reportData, setReportData] = useState<Budget[] | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    async function fetchCompanyProfile() {
+      if (user && firestore) {
+        const profile = await getCompanyProfile(firestore, user.uid);
+        if (profile) {
+          setCompanyProfile(profile);
+        }
+      }
+    }
+    fetchCompanyProfile();
+  }, [user, firestore]);
 
   const handleGenerateReport = async () => {
     if (!date?.from || !date?.to || !user || !firestore) return;
@@ -119,13 +133,24 @@ export function ReportsTab() {
   const handleExportPDF = () => {
     if (!reportData || !date?.from || !date.to) return;
     const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+    let startY = 22;
 
-    const periodStr = `Período: ${format(date.from, 'dd/MM/yyyy', { locale: ptBR })} a ${format(date.to, 'dd/MM/yyyy', { locale: ptBR })}`;
-    
     doc.setFontSize(18);
-    doc.text('Relatório de Orçamentos', 14, 22);
+    doc.text('Relatório de Orçamentos', 14, startY);
+    startY += 8;
+
+    if (companyProfile) {
+        doc.setFontSize(11);
+        doc.text(`${companyProfile.companyName || ''}${companyProfile.companyTaxId ? ` - CNPJ: ${companyProfile.companyTaxId}` : ''}`, 14, startY);
+        startY += 6;
+    }
+    
+    const periodStr = `Período: ${format(date.from, 'dd/MM/yyyy', { locale: ptBR })} a ${format(date.to, 'dd/MM/yyyy', { locale: ptBR })}`;
     doc.setFontSize(11);
-    doc.text(periodStr, 14, 30);
+    doc.text(periodStr, 14, startY);
+    startY += 10;
+
 
     const summaryData = [
         ['Total Geral', formatCurrency(grandTotal)],
@@ -135,12 +160,14 @@ export function ReportsTab() {
     ];
     
     autoTable(doc, {
-        startY: 35,
+        startY: startY,
         head: [['Resumo', 'Valor']],
         body: summaryData,
         theme: 'striped',
         headStyles: { fillColor: [38, 109, 168] },
     });
+    
+    startY = (doc as any).lastAutoTable.finalY + 10;
 
     const tableColumn = ['Cliente', 'Tarefa', 'Status', 'Total'];
     const tableRows = reportData.map((budget) => [
@@ -151,7 +178,7 @@ export function ReportsTab() {
     ]);
 
     autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 10,
+      startY: startY,
       head: [tableColumn],
       body: tableRows,
       theme: 'grid'
@@ -163,10 +190,16 @@ export function ReportsTab() {
   const handleShareWhatsApp = () => {
     if (!reportData || !date?.from || !date.to) return;
 
+    let message = `*Relatório de Orçamentos - ${companyProfile?.companyName || 'SLOB_SERVIÇOS'}*\n`;
+    if (companyProfile?.companyTaxId) {
+        message += `*CNPJ:* ${companyProfile.companyTaxId}\n`;
+    }
+    message += '\n';
+    
     const periodStr = `*Período:* ${format(date.from, 'dd/MM/yyyy', { locale: ptBR })} a ${format(date.to, 'dd/MM/yyyy', { locale: ptBR })}`;
     
-    let message = `*Resumo do Relatório de Orçamentos*\n\n`;
     message += `${periodStr}\n\n`;
+    message += `*Resumo do Relatório*\n`;
     message += `*Total Geral:* ${formatCurrency(grandTotal)}\n`;
     message += `*Concluído:* ${formatCurrency(totalConcluido)}\n`;
     message += `*Ativo:* ${formatCurrency(totalAtivo)}\n`;
