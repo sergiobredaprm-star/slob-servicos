@@ -71,10 +71,16 @@ export default function SettingsPage() {
   useEffect(() => {
     async function fetchCompanyProfile() {
       if (user && firestore) {
-        const profile = await getCompanyProfile(firestore, user.uid);
-        if (profile) {
-          companyForm.reset(profile);
-          setCompanyProfileId(profile.id);
+        try {
+          const profile = await getCompanyProfile(firestore, user.uid);
+          if (profile) {
+            companyForm.reset(profile);
+            setCompanyProfileId(profile.id);
+          }
+        } catch (error) {
+           // O erro de permissão já é tratado globalmente pelo errorEmitter
+           // e exibido no overlay de desenvolvimento, então não precisamos
+           // de um toast aqui para não duplicar as mensagens.
         }
       }
     }

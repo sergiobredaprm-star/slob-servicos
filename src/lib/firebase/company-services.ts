@@ -2,6 +2,7 @@
 import { collection, Firestore, doc, getDocs, query, limit } from 'firebase/firestore';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { CompanyProfile } from '@/lib/types';
+import { errorEmitter, FirestorePermissionError } from '@/firebase';
 
 export async function saveCompanyProfile(
   firestore: Firestore,
@@ -34,12 +35,26 @@ export async function getCompanyProfile(
 
   const profileCollection = collection(firestore, 'users', userId, 'companyProfile');
   const q = query(profileCollection, limit(1));
-  const querySnapshot = await getDocs(q);
+  
+  try {
+    const querySnapshot = await getDocs(q);
 
-  if (!querySnapshot.empty) {
-    const doc = querySnapshot.docs[0];
-    return { id: doc.id, ...(doc.data() as CompanyProfile) };
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      return { id: doc.id, ...(doc.data() as CompanyProfile) };
+    }
+    return null;
+  } catch (error: any) {
+    if (error.code === 'permission-denied') {
+      const contextualError = new FirestorePermissionError({
+        path: profileCollection.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', contextualError);
+      // Lançar o erro contextual para que possa ser capturado pela UI
+      throw contextualError;
+    }
+    // Lançar outros erros que não são de permissão
+    throw error;
   }
-
-  return null;
 }
