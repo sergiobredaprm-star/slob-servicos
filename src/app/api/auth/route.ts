@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
     
     return response;
 
-  } catch (error) {
-    console.error('Session login error:', error);
+  } catch (error: any) {
+    console.error('Session login error:', error.message);
     return NextResponse.json({ error: 'Failed to create session.' }, { status: 401 });
   }
 }
