@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeFirebaseAdmin } from './_firebase-admin';
 
+// Esta rota de API é executada no ambiente Node.js, onde o 'firebase-admin' é suportado.
+
 const adminApp = initializeFirebaseAdmin();
 const adminAuth = getAuth(adminApp);
 
@@ -9,11 +11,13 @@ export async function GET(request: NextRequest) {
   try {
     const sessionCookie = request.cookies.get('session')?.value;
     if (sessionCookie) {
+      // Verifica o cookie de sessão usando o Firebase Admin SDK
       await adminAuth.verifySessionCookie(sessionCookie, true);
       return NextResponse.json({ isAuthenticated: true });
     }
     return NextResponse.json({ isAuthenticated: false });
   } catch (error) {
+    // O cookie é inválido ou expirou
     return NextResponse.json({ isAuthenticated: false });
   }
 }

@@ -15,6 +15,8 @@ async function setSessionCookie(idToken: string) {
     body: JSON.stringify({ idToken }),
   });
   if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("Failed to set session cookie. Server responded with:", errorBody);
     throw new Error('Failed to set session cookie');
   }
 }
@@ -28,18 +30,18 @@ export const listenForTokenChanges = (auth: Auth) => {
   return onIdTokenChanged(auth, async (user) => {
     if (user) {
       try {
-        const idToken = await user.getIdToken();
+        const idToken = await user.getIdToken(true); // Force refresh
         await setSessionCookie(idToken);
       } catch (error) {
         console.error("Error setting session cookie:", error);
-        await clearSessionCookie();
+        // Don't clear session here, as it might log out a valid user if there's a temporary network issue.
       }
     } else {
-      // Quando o usuário faz logout ou o token expira do lado do cliente
-      const res = await fetch('/api/auth', { method: 'GET' });
-      const { isAuthenticated } = await res.json();
-      if (isAuthenticated) {
+      // User is signed out on the client. Clear the server session.
+      try {
         await clearSessionCookie();
+      } catch (error) {
+        console.error("Error clearing session cookie:", error);
       }
     }
   });
@@ -67,7 +69,7 @@ export const signUpUser = async (auth: Auth, email: string, password: string) =>
 export const signOutUser = async (auth: Auth) => {
     try {
         await signOut(auth);
-        await clearSessionCookie();
+        // The onIdTokenChanged listener will handle clearing the session cookie
         return { error: null };
     } catch (error) {
         return { error };
