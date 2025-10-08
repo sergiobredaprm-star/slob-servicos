@@ -24,9 +24,10 @@ import Link from 'next/link';
 import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { signInUser } from '@/firebase/auth/auth-service';
+import { useUser } from '@/firebase';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
@@ -37,10 +38,17 @@ const loginSchema = z.object({
 
 export default function LoginPage() {
   const auth = useAuth();
+  const { user } = useUser();
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      router.replace('/');
+    }
+  }, [user, router]);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -65,7 +73,7 @@ export default function LoginPage() {
           title: 'Login bem-sucedido!',
           description: 'Você será redirecionado para o painel.',
         });
-        router.push('/');
+        // O useEffect cuidará do redirecionamento
       }
     });
   }

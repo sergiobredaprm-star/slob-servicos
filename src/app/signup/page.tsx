@@ -21,10 +21,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import Link from 'next/link';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { signUpUser } from '@/firebase/auth/auth-service';
 
@@ -37,10 +37,17 @@ const signupSchema = z.object({
 
 export default function SignupPage() {
   const auth = useAuth();
+  const { user } = useUser();
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      router.replace('/');
+    }
+  }, [user, router]);
 
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -64,7 +71,7 @@ export default function SignupPage() {
           title: 'Cadastro bem-sucedido!',
           description: 'Você será redirecionado para o painel.',
         });
-        router.push('/');
+        // O useEffect cuidará do redirecionamento
       }
     });
   }

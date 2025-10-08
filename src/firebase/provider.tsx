@@ -5,7 +5,6 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import { listenForTokenChanges } from './auth/auth-service';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -80,20 +79,21 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       (firebaseUser) => { // Auth state determined
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event('auth-change'));
+        }
       },
       (error) => { // Auth listener error
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
+         if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event('auth-change'));
+        }
       }
     );
 
-    // This handles syncing the client token with the server-side session.
-    const unsubscribeIdToken = listenForTokenChanges(auth);
-
-
     return () => {
         unsubscribeAuthState();
-        unsubscribeIdToken();
     }
   }, [auth]); // Depends on the auth instance
 
