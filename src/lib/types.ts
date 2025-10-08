@@ -35,3 +35,14 @@ export type Client = {
   notes?: string;
   userId: string;
 };
+
+export type CompanyProfile = {
+  id: string;
+  companyName: string;
+  companyEmail?: string;
+  companyPhone?: string;
+  companyAddress?: string;
+  companyWebsite?: string;
+  companyTaxId?: string;
+  userId: string;
+};

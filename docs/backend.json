@@ -141,6 +141,47 @@
         "totalHours",
         "dailyValue"
       ]
+    },
+     "CompanyProfile": {
+      "title": "Company Profile",
+      "type": "object",
+      "description": "Represents the user's company information for invoices and reports.",
+      "properties": {
+        "companyName": {
+          "type": "string",
+          "description": "Name of the company."
+        },
+        "companyEmail": {
+          "type": "string",
+          "description": "Email address of the company.",
+          "format": "email"
+        },
+        "companyPhone": {
+          "type": "string",
+          "description": "Phone number of the company."
+        },
+        "companyAddress": {
+          "type": "string",
+          "description": "Physical address of the company."
+        },
+        "companyWebsite": {
+          "type": "string",
+          "description": "Website of the company.",
+          "format": "uri"
+        },
+        "companyTaxId": {
+          "type": "string",
+          "description": "Tax ID of the company (e.g., CNPJ)."
+        },
+        "userId": {
+            "type": "string",
+            "description": "The ID of the user who owns this company profile."
+        }
+      },
+      "required": [
+        "companyName",
+        "userId"
+      ]
     }
   },
   "auth": {
@@ -165,6 +206,10 @@
     "/users/{userId}/dailyRates/{dailyRateId}": {
       "schema": { "$ref": "#/entities/DailyRate" },
       "description": "Sub-collection for daily rates owned by a specific user."
+    },
+    "/users/{userId}/companyProfile/{profileId}": {
+      "schema": { "$ref": "#/entities/CompanyProfile" },
+      "description": "Sub-collection for the company profile owned by a specific user."
     }
   }
 }
