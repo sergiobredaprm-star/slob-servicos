@@ -1,3 +1,4 @@
+'use client';
 import {
   Card,
   CardContent,
@@ -5,7 +6,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { DollarSign, CheckCircle2, Hourglass, XCircle } from 'lucide-react';
-import { financialSummary } from '@/lib/data';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { Budget } from '@/lib/types';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -15,6 +18,37 @@ const formatCurrency = (value: number) => {
 };
 
 export function StatsCards() {
+  const { firestore, user } = useFirebase();
+  const budgetsQuery = useMemoFirebase(() => 
+    user && firestore ? query(collection(firestore, 'budgets'), where('userId', '==', user.uid)) : null
+  , [firestore, user]);
+
+  const { data: budgets } = useCollection<Budget>(budgetsQuery);
+
+  const financialSummary = useMemoFirebase(() => {
+    if (!budgets) {
+      return {
+        totalOrcado: 0,
+        totalRecebido: 0,
+        totalPendente: 0,
+        totalCancelado: 0,
+      };
+    }
+    return {
+      totalOrcado: budgets.reduce((sum, budget) => sum + budget.total, 0),
+      totalRecebido: budgets
+        .filter((b) => b.status === 'concluído')
+        .reduce((sum, budget) => sum + budget.total, 0),
+      totalPendente: budgets
+        .filter((b) => b.status === 'ativo')
+        .reduce((sum, budget) => sum + budget.total, 0),
+      totalCancelado: budgets
+        .filter((b) => b.status === 'cancelado')
+        .reduce((sum, budget) => sum + budget.total, 0),
+    };
+  }, [budgets]);
+
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>

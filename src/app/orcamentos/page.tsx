@@ -1,6 +1,5 @@
 'use client';
 
-import { budgets } from '@/lib/data';
 import { Budget, BudgetStatus } from '@/lib/types';
 import {
   Table,
@@ -29,6 +28,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import Link from 'next/link';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 const statusStyles: { [key in BudgetStatus]: string } = {
   ativo: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
@@ -45,6 +46,14 @@ const formatCurrency = (value: number) => {
 };
 
 export default function OrcamentosPage() {
+  const { firestore, user } = useFirebase();
+
+  const budgetsQuery = useMemoFirebase(() => 
+    user && firestore ? query(collection(firestore, 'budgets'), where('userId', '==', user.uid)) : null
+  , [firestore, user]);
+
+  const { data: budgets, isLoading } = useCollection<Budget>(budgetsQuery);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -79,7 +88,8 @@ export default function OrcamentosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {budgets.map((budget) => (
+              {isLoading && <TableRow><TableCell colSpan={5} className="text-center">Carregando...</TableCell></TableRow>}
+              {!isLoading && budgets && budgets.map((budget) => (
                 <TableRow key={budget.id}>
                   <TableCell className="font-medium">
                     {budget.clientName}
@@ -107,7 +117,7 @@ export default function OrcamentosPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Ações</DropdownMenuLabel>
                         <DropdownMenuItem
-                          onClick={() => navigator.clipboard.writeText(budget.id)}
+                          onClick={() => budget.id && navigator.clipboard.writeText(budget.id)}
                         >
                           Copiar ID
                         </DropdownMenuItem>
@@ -122,6 +132,7 @@ export default function OrcamentosPage() {
                   </TableCell>
                 </TableRow>
               ))}
+              {!isLoading && (!budgets || budgets.length === 0) && <TableRow><TableCell colSpan={5} className="text-center">Nenhum orçamento encontrado.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

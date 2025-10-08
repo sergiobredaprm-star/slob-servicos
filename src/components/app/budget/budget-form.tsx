@@ -1,4 +1,4 @@
-'use client';
+'use-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -32,13 +32,14 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { useState, useTransition } from 'react';
-import { getTaskSuggestionsAction, saveBudget } from '@/app/actions';
+import { getTaskSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { Budget } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useUser } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
+import { saveBudget } from '@/lib/firebase/services';
 
 const formSchema = z.object({
   clientName: z.string().min(2, {
@@ -61,7 +62,7 @@ const formSchema = z.object({
   total: z.coerce.number().optional(),
 }).refine(data => {
   if (data.budgetType === 'daily') {
-    return !!data.period && !!data.dailyRate && data.dailyRate > 0 && data.period.from < data.period.to;
+    return !!data.period && !!data.dailyRate && data.dailyRate > 0 && !!data.period.from && !!data.period.to && data.period.from < data.period.to;
   }
   return true;
 }, {
@@ -79,6 +80,7 @@ const formSchema = z.object({
 
 
 export function BudgetForm() {
+  const { firestore } = useFirebase();
   const { user } = useUser();
   const router = useRouter();
   const [date, setDate] = useState<DateRange | undefined>({
@@ -118,6 +120,15 @@ export function BudgetForm() {
       return;
     }
 
+    if (!firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro de Configuração',
+        description: 'O Firestore não está disponível. Verifique sua conexão.',
+      });
+      return;
+    }
+
     startSubmitTransition(async () => {
       let finalTotal = 0;
       if (values.budgetType === 'daily' && values.period?.from && values.period?.to && values.dailyRate) {
@@ -140,7 +151,7 @@ export function BudgetForm() {
       };
 
       try {
-        await saveBudget(budgetData);
+        await saveBudget(firestore, budgetData);
         toast({
           title: 'Orçamento Criado!',
           description: 'O novo orçamento foi salvo com sucesso.',

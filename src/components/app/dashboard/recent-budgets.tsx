@@ -1,5 +1,8 @@
+'use client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { budgets } from '@/lib/data';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { Budget } from '@/lib/types';
+import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -9,9 +12,31 @@ const formatCurrency = (value: number) => {
 };
 
 export function RecentBudgets() {
+  const { firestore, user } = useFirebase();
+
+  const recentBudgetsQuery = useMemoFirebase(
+    () =>
+      user && firestore
+        ? query(
+            collection(firestore, 'budgets'),
+            where('userId', '==', user.uid),
+            orderBy('period.from', 'desc'),
+            limit(5)
+          )
+        : null,
+    [firestore, user]
+  );
+  
+  const { data: budgets, isLoading } = useCollection<Budget>(recentBudgetsQuery);
+
+  if (isLoading) {
+    return <div>Carregando orçamentos recentes...</div>;
+  }
+
+
   return (
     <div className="space-y-8">
-      {budgets.slice(0, 5).map((budget, index) => (
+      {budgets?.map((budget, index) => (
         <div key={budget.id} className="flex items-center">
           <Avatar className="h-9 w-9">
             <AvatarImage
@@ -27,13 +52,16 @@ export function RecentBudgets() {
             <p className="text-sm font-medium leading-none">
               {budget.clientName}
             </p>
-            <p className="text-sm text-muted-foreground">{budget.email}</p>
+            <p className="text-sm text-muted-foreground">{budget.task}</p>
           </div>
           <div className="ml-auto font-medium">
             {formatCurrency(budget.total)}
           </div>
         </div>
       ))}
+       {!budgets || budgets.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center">Nenhum orçamento recente.</p>
+      )}
     </div>
   );
 }

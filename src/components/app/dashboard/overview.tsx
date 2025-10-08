@@ -7,21 +7,11 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-
-const data = [
-  { month: 'Jan', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Fev', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Mar', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Abr', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Mai', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Jun', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Jul', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Ago', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Set', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Out', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Nov', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Dez', total: Math.floor(Math.random() * 5000) + 1000 },
-];
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { Budget } from '@/lib/types';
+import { eachMonthOfInterval, endOfYear, format, startOfYear } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const chartConfig = {
   total: {
@@ -31,10 +21,47 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function Overview() {
+  const { firestore, user } = useFirebase();
+
+  const budgetsQuery = useMemoFirebase(
+    () =>
+      user && firestore
+        ? query(collection(firestore, 'budgets'), where('userId', '==', user.uid))
+        : null,
+    [firestore, user]
+  );
+
+  const { data: budgets } = useCollection<Budget>(budgetsQuery);
+
+  const monthlyTotals = useMemoFirebase(() => {
+    const now = new Date();
+    const months = eachMonthOfInterval({
+      start: startOfYear(now),
+      end: endOfYear(now),
+    });
+
+    const totals = months.map(month => ({
+      month: format(month, 'MMM', { locale: ptBR }),
+      total: 0,
+    }));
+
+    if (budgets) {
+      for (const budget of budgets) {
+        if (budget.period?.from) {
+          const monthIndex = (budget.period.from as any).toDate().getMonth();
+          totals[monthIndex].total += budget.total;
+        }
+      }
+    }
+    
+    return totals;
+  }, [budgets]);
+
+
   return (
     <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
       <ResponsiveContainer width="100%" height={350}>
-        <BarChart data={data}>
+        <BarChart data={monthlyTotals}>
           <XAxis
             dataKey="month"
             stroke="#888888"
