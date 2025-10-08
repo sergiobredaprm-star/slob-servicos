@@ -35,19 +35,9 @@ export function RecentBudgets() {
 
   return (
     <div className="space-y-8">
-      {budgets?.map((budget, index) => (
+      {budgets?.map((budget) => (
         <div key={budget.id} className="flex items-center">
-          <Avatar className="h-9 w-9">
-            <AvatarImage
-              src={`https://picsum.photos/seed/${index + 10}/40/40`}
-              alt="Avatar"
-              data-ai-hint="company logo"
-            />
-            <AvatarFallback>
-              {budget.clientName.substring(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="ml-4 space-y-1">
+          <div className="space-y-1">
             <p className="text-sm font-medium leading-none">
               {budget.clientName}
             </p>
