@@ -12,7 +12,10 @@ export async function saveBudget(firestore: Firestore, budgetData: Omit<Budget, 
         dataToSave.period.from = Timestamp.fromDate(dataToSave.period.from);
     }
     if (dataToSave.period?.to && dataToSave.period.to instanceof Date) {
-        dataToSave.period.to = Timestamp.fromDate(dataToToSave.period.to);
+        dataToSave.period.to = Timestamp.fromDate(dataToSave.period.to);
+    }
+    if (dataToSave.deadline && dataToSave.deadline instanceof Date) {
+        dataToSave.deadline = Timestamp.fromDate(dataToSave.deadline);
     }
     
     return addDocumentNonBlocking(budgetCollection, dataToSave);

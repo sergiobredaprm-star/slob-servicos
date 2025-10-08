@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Client": {
@@ -57,6 +58,11 @@
           "format": "date-time"
         },
         "endDate": {
+          "type": "string",
+          "description": "End date of the work period.",
+          "format": "date-time"
+        },
+        "deadline": {
           "type": "string",
           "description": "End date of the work period.",
           "format": "date-time"

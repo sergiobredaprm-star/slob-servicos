@@ -49,6 +49,7 @@ const formSchema = z.object({
   budgetType: z.enum(['daily', 'task'], {
     required_error: 'Você precisa selecionar um tipo de orçamento.',
   }),
+  deadline: z.date().optional(),
   task: z.string().min(5, {
     message: 'A descrição da tarefa deve ter pelo menos 5 caracteres.',
   }),
@@ -87,6 +88,7 @@ export function BudgetForm() {
     from: new Date(),
     to: addDays(new Date(), 5),
   });
+  const [deadline, setDeadline] = useState<Date | undefined>();
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitPending, startSubmitTransition] = useTransition();
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -145,6 +147,7 @@ export function BudgetForm() {
         budgetType: values.budgetType,
         dailyRate: values.dailyRate,
         period: values.period,
+        deadline: values.deadline,
         total: finalTotal,
         status: 'ativo',
         userId: user.uid,
@@ -232,40 +235,84 @@ export function BudgetForm() {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="budgetType"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel>Tipo de Orçamento</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className="flex flex-col space-y-1"
-                >
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="daily" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      Por Diária
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="task" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      Por Tarefa (Valor Fechado)
-                    </FormLabel>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <FormField
+            control={form.control}
+            name="budgetType"
+            render={({ field }) => (
+                <FormItem className="space-y-3">
+                <FormLabel>Tipo de Orçamento</FormLabel>
+                <FormControl>
+                    <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex flex-col space-y-1"
+                    >
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="daily" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                        Por Diária
+                        </FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="task" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                        Por Tarefa (Valor Fechado)
+                        </FormLabel>
+                    </FormItem>
+                    </RadioGroup>
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+              control={form.control}
+              name="deadline"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Prazo de Entrega (Opcional)</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={'outline'}
+                          className={cn(
+                            'pl-3 text-left font-normal',
+                            !deadline && 'text-muted-foreground'
+                          )}
+                        >
+                          {deadline ? (
+                            format(deadline, 'PPP', { locale: ptBR })
+                          ) : (
+                            <span>Escolha uma data</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={deadline}
+                        onSelect={(date) => {
+                          setDeadline(date);
+                          if(date) field.onChange(date);
+                        }}
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        </div>
         
         <FormField
           control={form.control}

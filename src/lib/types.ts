@@ -14,6 +14,7 @@ export type Budget = {
     from: Date | Timestamp;
     to: Date | Timestamp;
   };
+  deadline?: Date | Timestamp;
   total: number;
   status: BudgetStatus;
   userId: string;
