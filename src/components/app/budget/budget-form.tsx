@@ -36,14 +36,22 @@ import { getTaskSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Budget } from '@/lib/types';
+import { Budget, Client } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useFirebase, useUser } from '@/firebase';
+import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { saveBudget } from '@/lib/firebase/services';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { collection, query } from 'firebase/firestore';
 
 const formSchema = z.object({
-  clientName: z.string().min(2, {
-    message: 'O nome do cliente deve ter pelo menos 2 caracteres.',
+  clientName: z.string().min(1, {
+    message: 'Selecione um cliente.',
   }),
   clientDescription: z.string().optional(),
   budgetType: z.enum(['daily', 'task'], {
@@ -94,6 +102,12 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitPending, startSubmitTransition] = useTransition();
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  
+  const clientsQuery = useMemoFirebase(() => 
+    user && firestore ? query(collection(firestore, 'users', user.uid, 'clients')) : null
+  , [firestore, user]);
+
+  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -214,9 +228,30 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Nome do Cliente</FormLabel>
-              <FormControl>
-                <Input placeholder="Ex: Tech Solutions" {...field} />
-              </FormControl>
+               <Select
+                onValueChange={(value) => {
+                  const selectedClient = clients?.find(c => c.id === value);
+                  field.onChange(selectedClient?.name);
+                  form.setValue('clientDescription', selectedClient?.notes || '');
+                }}
+                defaultValue={field.value}
+                disabled={isLoadingClients}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um cliente" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {isLoadingClients && <SelectItem value="loading" disabled>Carregando clientes...</SelectItem>}
+                  {clients?.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                  {!isLoadingClients && clients?.length === 0 && <SelectItem value="no-clients" disabled>Nenhum cliente cadastrado</SelectItem>}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
