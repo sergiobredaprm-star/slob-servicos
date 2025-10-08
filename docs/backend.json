@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "Budget": {
+      "title": "Budget",
+      "description": "Represents a budget for a client's task.",
+      "type": "object",
+      "properties": {
+        "clientName": {
+          "type": "string",
+          "description": "The name of the client."
+        },
+        "clientDescription": {
+          "type": "string",
+          "description": "A description of the client and their needs."
+        },
+        "task": {
+          "type": "string",
+          "description": "The task to be performed."
+        },
+        "budgetType": {
+            "type": "string",
+            "description": "The type of budget, either 'daily' or 'task'.",
+            "enum": ["daily", "task"]
+        },
+        "dailyRate": {
+          "type": "number",
+          "description": "The daily rate for the work."
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "to": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "total": {
+          "type": "number",
+          "description": "The total cost of the budget."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the budget.",
+          "enum": ["ativo", "concluído", "cancelado"]
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who created the budget."
+        }
+      },
+      "required": ["clientName", "task", "total", "status", "userId", "budgetType"]
+    }
+  },
+  "auth": {
+    "providers": ["anonymous"]
+  },
+  "firestore": {
+    "/budgets/{budgetId}": {
+      "schema": {
+        "$ref": "#/entities/Budget"
+      },
+      "description": "Stores budget documents."
+    }
+  }
+}

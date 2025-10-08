@@ -1,14 +1,16 @@
 import { Timestamp } from 'firebase/firestore';
 
 export type BudgetStatus = 'ativo' | 'concluído' | 'cancelado';
+export type BudgetType = 'daily' | 'task';
 
 export type Budget = {
   id?: string;
   clientName: string;
   clientDescription?: string;
   task: string;
-  dailyRate: number;
-  period: {
+  budgetType: BudgetType;
+  dailyRate?: number;
+  period?: {
     from: Date | Timestamp;
     to: Date | Timestamp;
   };

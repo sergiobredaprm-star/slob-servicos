@@ -37,13 +37,17 @@ import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { Budget } from '@/lib/types';
-
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useUser } from '@/firebase';
 
 const formSchema = z.object({
   clientName: z.string().min(2, {
     message: 'O nome do cliente deve ter pelo menos 2 caracteres.',
   }),
   clientDescription: z.string().optional(),
+  budgetType: z.enum(['daily', 'task'], {
+    required_error: 'Você precisa selecionar um tipo de orçamento.',
+  }),
   task: z.string().min(5, {
     message: 'A descrição da tarefa deve ter pelo menos 5 caracteres.',
   }),
@@ -52,14 +56,30 @@ const formSchema = z.object({
       from: z.date(),
       to: z.date(),
     })
-    .refine((data) => data.from < data.to, {
-      message: 'A data de início deve ser anterior à data de término.',
-      path: ['from'],
-    }),
-  dailyRate: z.coerce.number().min(1, { message: 'O valor deve ser maior que 0.' }),
+    .optional(),
+  dailyRate: z.coerce.number().optional(),
+  total: z.coerce.number().optional(),
+}).refine(data => {
+  if (data.budgetType === 'daily') {
+    return !!data.period && !!data.dailyRate && data.dailyRate > 0 && data.period.from < data.period.to;
+  }
+  return true;
+}, {
+  message: 'Para orçamento por diária, o período e o valor da diária são obrigatórios.',
+  path: ['budgetType'],
+}).refine(data => {
+    if (data.budgetType === 'task') {
+        return !!data.total && data.total > 0;
+    }
+    return true;
+}, {
+    message: 'Para orçamento por tarefa, o valor total é obrigatório.',
+    path: ['budgetType'],
 });
 
+
 export function BudgetForm() {
+  const { user } = useUser();
   const router = useRouter();
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(),
@@ -76,24 +96,47 @@ export function BudgetForm() {
       clientName: '',
       clientDescription: '',
       task: '',
+      budgetType: 'daily',
       dailyRate: 150,
       period: {
         from: new Date(),
         to: addDays(new Date(), 5),
       },
+      total: 0,
     },
   });
 
+  const budgetType = form.watch('budgetType');
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro de Autenticação',
+        description: 'Você precisa estar logado para criar um orçamento.',
+      });
+      return;
+    }
+
     startSubmitTransition(async () => {
-       const workDays = values.period?.from && values.period?.to ? differenceInCalendarDays(values.period.to, values.period.from) + 1 : 0;
-       const total = workDays * values.dailyRate;
+      let finalTotal = 0;
+      if (values.budgetType === 'daily' && values.period?.from && values.period?.to && values.dailyRate) {
+        const workDays = differenceInCalendarDays(values.period.to, values.period.from) + 1;
+        finalTotal = workDays * values.dailyRate;
+      } else if (values.budgetType === 'task' && values.total) {
+        finalTotal = values.total;
+      }
 
       const budgetData: Omit<Budget, 'id'> = {
-        ...values,
-        total: total,
+        clientName: values.clientName,
+        clientDescription: values.clientDescription,
+        task: values.task,
+        budgetType: values.budgetType,
+        dailyRate: values.dailyRate,
+        period: values.period,
+        total: finalTotal,
         status: 'ativo',
-        userId: 'temp-user-id' // Placeholder, will be replaced with real auth user
+        userId: user.uid,
       };
 
       try {
@@ -140,9 +183,10 @@ export function BudgetForm() {
     });
   };
 
-  const workDays = date?.from && date?.to ? differenceInCalendarDays(date.to, date.from) + 1 : 0;
-  const dailyRateValue = form.watch('dailyRate');
-  const total = workDays * (dailyRateValue || 0);
+  const workDays = budgetType === 'daily' && date?.from && date?.to ? differenceInCalendarDays(date.to, date.from) + 1 : 0;
+  const dailyRateValue = form.watch('dailyRate') || 0;
+  const taskTotal = form.watch('total') || 0;
+  const total = budgetType === 'daily' ? workDays * dailyRateValue : taskTotal;
 
   return (
     <Form {...form}>
@@ -176,6 +220,42 @@ export function BudgetForm() {
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="budgetType"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Tipo de Orçamento</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-col space-y-1"
+                >
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="daily" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Por Diária
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="task" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Por Tarefa (Valor Fechado)
+                    </FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
         <FormField
           control={form.control}
           name="task"
@@ -227,86 +307,109 @@ export function BudgetForm() {
           )}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {budgetType === 'daily' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <FormField
+              control={form.control}
+              name="period"
+              render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                  <FormLabel>Período de Trabalho</FormLabel>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                      <FormControl>
+                          <Button
+                          variant={'outline'}
+                          className={cn(
+                              'pl-3 text-left font-normal',
+                              !date && 'text-muted-foreground'
+                          )}
+                          >
+                          {date?.from ? (
+                              date.to ? (
+                              <>
+                                  {format(date.from, 'LLL dd, y', { locale: ptBR })} -{' '}
+                                  {format(date.to, 'LLL dd, y', { locale: ptBR })}
+                              </>
+                              ) : (
+                              format(date.from, 'LLL dd, y', { locale: ptBR })
+                              )
+                          ) : (
+                              <span>Escolha um período</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                      </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={date?.from}
+                          selected={date}
+                          onSelect={(range) => {
+                              setDate(range);
+                              if(range) field.onChange(range);
+                          }}
+                          numberOfMonths={2}
+                          locale={ptBR}
+                      />
+                      </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                  </FormItem>
+              )}
+              />
+              <FormField
+              control={form.control}
+              name="dailyRate"
+              render={({ field }) => (
+                  <FormItem>
+                  <FormLabel>Valor da Diária (R$)</FormLabel>
+                  <FormControl>
+                      <Input type="number" placeholder="150" {...field} value={field.value ?? ''}/>
+                  </FormControl>
+                  <FormMessage />
+                  </FormItem>
+              )}
+              />
+          </div>
+        )}
+
+        {budgetType === 'task' && (
             <FormField
             control={form.control}
-            name="period"
-            render={({ field }) => (
-                <FormItem className="flex flex-col">
-                <FormLabel>Período de Trabalho</FormLabel>
-                <Popover>
-                    <PopoverTrigger asChild>
-                    <FormControl>
-                        <Button
-                        variant={'outline'}
-                        className={cn(
-                            'pl-3 text-left font-normal',
-                            !date && 'text-muted-foreground'
-                        )}
-                        >
-                        {date?.from ? (
-                            date.to ? (
-                            <>
-                                {format(date.from, 'LLL dd, y', { locale: ptBR })} -{' '}
-                                {format(date.to, 'LLL dd, y', { locale: ptBR })}
-                            </>
-                            ) : (
-                            format(date.from, 'LLL dd, y', { locale: ptBR })
-                            )
-                        ) : (
-                            <span>Escolha um período</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                    </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={date?.from}
-                        selected={date}
-                        onSelect={(range) => {
-                            setDate(range);
-                            if(range) field.onChange(range);
-                        }}
-                        numberOfMonths={2}
-                        locale={ptBR}
-                    />
-                    </PopoverContent>
-                </Popover>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-            <FormField
-            control={form.control}
-            name="dailyRate"
+            name="total"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Valor da Diária (R$)</FormLabel>
+                <FormLabel>Valor Total da Tarefa (R$)</FormLabel>
                 <FormControl>
-                    <Input type="number" placeholder="150" {...field} />
+                    <Input type="number" placeholder="500" {...field} value={field.value ?? ''}/>
                 </FormControl>
                 <FormMessage />
                 </FormItem>
             )}
             />
-        </div>
+        )}
+
 
         <Card className="bg-muted/50">
             <CardHeader>
                 <CardTitle className="text-lg">Resumo do Orçamento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                    <span className="text-muted-foreground">Diárias:</span>
-                    <span>{workDays} dia(s)</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-muted-foreground">Valor da diária:</span>
-                    <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dailyRateValue)}</span>
-                </div>
+                {budgetType === 'daily' && (
+                  <>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Diárias:</span>
+                        <span>{workDays} dia(s)</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Valor da diária:</span>
+                        <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dailyRateValue)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between font-bold text-lg">
                     <span>Total:</span>
                     <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
