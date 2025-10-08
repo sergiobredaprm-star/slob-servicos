@@ -14,15 +14,10 @@
       "required": ["uid", "email"]
     },
     "Client": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Client",
       "type": "object",
       "description": "Represents a client for whom budgets are created.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the client."
-        },
         "name": {
           "type": "string",
           "description": "Name of the client."
@@ -39,72 +34,73 @@
         "notes": {
           "type": "string",
           "description": "Any additional notes or information about the client."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this client."
         }
       },
       "required": [
-        "id",
-        "name"
+        "name",
+        "userId"
       ]
     },
     "Budget": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Budget",
       "type": "object",
       "description": "Represents a budget created for a client.",
       "properties": {
-        "id": {
+        "clientName": {
           "type": "string",
-          "description": "Unique identifier for the budget."
+          "description": "Name of the client for the budget."
         },
-        "clientId": {
-          "type": "string",
-          "description": "Reference to the Client entity. (Relationship: Client 1:N Budget)"
+        "clientDescription": {
+            "type": "string",
+            "description": "A short description about the client."
         },
-        "taskDescription": {
+        "task": {
           "type": "string",
           "description": "Description of the task to be performed."
         },
-        "startDate": {
+        "budgetType": {
           "type": "string",
-          "description": "Start date of the work period.",
-          "format": "date-time"
+          "enum": ["daily", "task"]
         },
-        "endDate": {
-          "type": "string",
-          "description": "End date of the work period.",
-          "format": "date-time"
+        "dailyRate": {
+          "type": "number"
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "from": { "type": "string", "format": "date-time" },
+            "to": { "type": "string", "format": "date-time" }
+          }
         },
         "deadline": {
           "type": "string",
-          "description": "End date of the work period.",
           "format": "date-time"
         },
-        "dailyRateId": {
-          "type": "string",
-          "description": "Reference to the DailyRate entity. (Relationship: DailyRate 1:N Budget)"
-        },
-        "totalAmount": {
+        "total": {
           "type": "number",
-          "description": "Total amount of the budget, calculated automatically."
+          "description": "Total amount of the budget."
         },
         "status": {
           "type": "string",
-          "description": "Status of the budget (e.g., active, completed, canceled)."
+          "description": "Status of the budget (e.g., ativo, concluído, cancelado).",
+          "enum": ["ativo", "concluído", "cancelado"]
         },
-        "notes": {
+        "userId": {
           "type": "string",
-          "description": "Additional notes or comments related to the budget."
+          "description": "The ID of the user who owns this budget."
         }
       },
       "required": [
-        "id",
-        "clientId",
-        "taskDescription",
-        "startDate",
-        "endDate",
-        "dailyRateId",
-        "totalAmount",
-        "status"
+        "clientName",
+        "task",
+        "budgetType",
+        "total",
+        "status",
+        "userId"
       ]
     },
     "DailyRate": {

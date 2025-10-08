@@ -26,3 +26,12 @@ export type DailyRateSettings = {
   workload: number;
   defaultRate: number;
 };
+
+export type Client = {
+  id: string;
+  name: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  notes?: string;
+  userId: string;
+};
