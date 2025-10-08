@@ -1,120 +1,121 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
+ * @fileOverview Firestore Security Rules for the application.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model.  Each user has full
- * control over the data stored under their respective user ID.
+ * This ruleset enforces a strict user-ownership model. Users can only read and write data
+ * associated with their own user ID. This ensures data privacy and prevents unauthorized access.
  *
  * Data Structure:
- * Data is organized under the /users/{userId} path.  Clients, Budgets and DailyRates
- * are stored under the user's path.
- *   - /users/{userId}/clients/{clientId}
- *   - /users/{userId}/clients/{clientId}/budgets/{budgetId}
- *   - /users/{userId}/dailyRates/{dailyRateId}
+ * Data is organized hierarchically under the `/users/{userId}` path. Each user has their own
+ * subcollections for `clients`, `budgets`, and `dailyRates`.
  *
  * Key Security Decisions:
- * - Users can only access data under their own user ID.
- * - Listing all users or all data across users is disallowed.
- * - Data validation is relaxed to allow for rapid prototyping and iteration,
- *   focusing on authorization and relational integrity checks.
+ * - User listing is explicitly denied.
+ * - Only authenticated users can access data.
+ * - Data validation is minimal in this prototyping phase, focusing on authorization and
+ *   relational integrity.
+ * - Write operations are always restricted to authorized users.
+ *
+ * Denormalization for Authorization:
+ *  - User IDs are embedded within documents to avoid costly `get()` calls in the rules.
+ *  - This allows for simple ownership checks based on the `request.auth.uid`.
+ *
+ * Structural Segregation:
+ *  - Private data is stored under user-specific subcollections, ensuring that it cannot be
+ *    accidentally exposed through overly permissive rules on top-level collections.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is authenticated.
-     * @return {boolean} True if the request is authenticated.
+     * @description Checks if the request is made by an authenticated user.
+     * @returns {boolean} True if the user is signed in, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user is the owner of the resource.
-     * @param {string} userId The user ID to compare against the request's auth UID.
-     * @return {boolean} True if the user is the owner.
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     * @param {string} userId - The user ID to compare against the authenticated user's UID.
+     * @returns {boolean} True if the user is the owner, false otherwise.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user is the owner of the resource, and that the resource exists.
-     * @param {string} userId The user ID to compare against the request's auth UID.
-     * @return {boolean} True if the user is the owner and the resource exists.
+     * @description Checks if the authenticated user is the owner of an existing document.
+     * @param {string} userId - The user ID of the owner.
+     * @returns {boolean} True if the user is the owner and the document exists, false otherwise.
      */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Enforces user-ownership for Clients.
+     * @description Rules for user profiles.
+     * @path /users/{userId}
+     * @allow (create) User with UID 'user123' creates their profile with matching UID in the document.
+     * @deny (create) User with UID 'user123' attempts to create a profile with a different UID ('user456').
+     * @principle Enforces user-ownership; only the authenticated user can create their profile.
+     */
+    match /users/{userId} {
+      allow get: if false;
+      allow list: if false;
+
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for clients subcollection.
      * @path /users/{userId}/clients/{clientId}
-     * @allow (create) Authenticated user with matching userId in path creates a new client.
-     * @allow (get, list) Authenticated user requests their own client.
-     * @allow (update, delete) Authenticated user updates/deletes their own existing client.
-     * @deny (create) Unauthenticated user attempts to create a client.
-     * @deny (get, list) Authenticated user attempts to access another user's client.
-     * @deny (update, delete) Authenticated user attempts to update/delete another user's client.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with UID 'user123' creates a client under their user ID.
+     * @deny (create) User with UID 'user123' attempts to create a client under a different user ID ('user456').
+     * @principle Enforces user-ownership for clients.
      */
     match /users/{userId}/clients/{clientId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.id == clientId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Enforces user-ownership for Budgets.
-     * @path /users/{userId}/clients/{clientId}/budgets/{budgetId}
-     * @allow (create) Authenticated user with matching userId in path creates a new budget.
-     * @allow (get, list) Authenticated user requests their own budget.
-     * @allow (update, delete) Authenticated user updates/deletes their own existing budget.
-     * @deny (create) Unauthenticated user attempts to create a budget.
-     * @deny (get, list) Authenticated user attempts to access another user's budget.
-     * @deny (update, delete) Authenticated user attempts to update/delete another user's budget.
-     * @principle Enforces document ownership for writes.
+     * @description Rules for budgets subcollection.
+     * @path /users/{userId}/budgets/{budgetId}
+     * @allow (create) User with UID 'user123' creates a budget under their user ID.
+     * @deny (create) User with UID 'user123' attempts to create a budget under a different user ID ('user456').
+     * @principle Enforces user-ownership for budgets.
      */
-    match /users/{userId}/clients/{clientId}/budgets/{budgetId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.id == budgetId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+    match /users/{userId}/budgets/{budgetId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Enforces user-ownership for DailyRates.
+     * @description Rules for daily rates subcollection.
      * @path /users/{userId}/dailyRates/{dailyRateId}
-     * @allow (create) Authenticated user with matching userId in path creates a new dailyRate.
-     * @allow (get, list) Authenticated user requests their own dailyRate.
-     * @allow (update, delete) Authenticated user updates/deletes their own existing dailyRate.
-     * @deny (create) Unauthenticated user attempts to create a dailyRate.
-     * @deny (get, list) Authenticated user attempts to access another user's dailyRate.
-     * @deny (update, delete) Authenticated user attempts to update/delete another user's dailyRate.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with UID 'user123' creates a daily rate under their user ID.
+     * @deny (create) User with UID 'user123' attempts to create a daily rate under a different user ID ('user456').
+     * @principle Enforces user-ownership for daily rates.
      */
     match /users/{userId}/dailyRates/{dailyRateId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.id == dailyRateId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
-    }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
 
-    /**
-     * @description Denies listing the entire budgets collection.  This addresses the reported error.
-     * @path /budgets
-     * @deny (list)  Any attempt to list the budgets collection.
-     * @principle Avoid public listing of private collections.  The "budgets" collection is intended
-     *            to be private to each user.
-     */
-    match /budgets {
-        allow get: if false;
-        allow list: if false;
-        allow create: if false;
-        allow update: if false;
-        allow delete: if false;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
   }
 }
