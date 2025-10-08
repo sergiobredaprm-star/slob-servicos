@@ -1,13 +1,16 @@
 'use client';
-import { collection, Firestore, Timestamp } from 'firebase/firestore';
+import { collection, Firestore, Timestamp, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase';
 import { Budget } from '@/lib/types';
 
-export async function saveBudget(firestore: Firestore, budgetData: Omit<Budget, 'id'>) {
-    const budgetCollection = collection(firestore, 'budgets');
+export async function saveBudget(firestore: Firestore, userId: string, budgetData: Omit<Budget, 'id' | 'userId'>) {
+    if (!userId) {
+        throw new Error("User ID is required to save a budget.");
+    }
+    const budgetCollection = collection(firestore, 'users', userId, 'budgets');
 
     // Convert Date objects to Timestamps
-    const dataToSave = { ...budgetData };
+    const dataToSave: any = { ...budgetData, userId };
     if (dataToSave.period?.from && dataToSave.period.from instanceof Date) {
         dataToSave.period.from = Timestamp.fromDate(dataToSave.period.from);
     }

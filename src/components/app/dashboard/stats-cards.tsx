@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/card';
 import { DollarSign, CheckCircle2, Hourglass, XCircle } from 'lucide-react';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { Budget } from '@/lib/types';
 
 const formatCurrency = (value: number) => {
@@ -20,7 +20,7 @@ const formatCurrency = (value: number) => {
 export function StatsCards() {
   const { firestore, user } = useFirebase();
   const budgetsQuery = useMemoFirebase(() => 
-    user && firestore ? query(collection(firestore, 'budgets'), where('userId', '==', user.uid)) : null
+    user && firestore ? query(collection(firestore, 'users', user.uid, 'budgets')) : null
   , [firestore, user]);
 
   const { data: budgets } = useCollection<Budget>(budgetsQuery);

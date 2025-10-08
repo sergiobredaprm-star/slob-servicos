@@ -8,7 +8,7 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { Budget } from '@/lib/types';
 import { eachMonthOfInterval, endOfYear, format, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -26,7 +26,7 @@ export function Overview() {
   const budgetsQuery = useMemoFirebase(
     () =>
       user && firestore
-        ? query(collection(firestore, 'budgets'), where('userId', '==', user.uid))
+        ? query(collection(firestore, 'users', user.uid, 'budgets'))
         : null,
     [firestore, user]
   );

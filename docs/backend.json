@@ -1,6 +1,18 @@
 
 {
   "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" }
+      },
+      "required": ["uid", "email"]
+    },
     "Client": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Client",
@@ -142,72 +154,21 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}/clients/{clientId}",
-        "definition": {
-          "entityName": "Client",
-          "schema": {
-            "$ref": "#/backend/entities/Client"
-          },
-          "description": "Stores client data, owned by the user. Includes denormalized 'userId' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The ID of the user who owns the client."
-            },
-            {
-              "name": "clientId",
-              "description": "The ID of the client."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/clients/{clientId}/budgets/{budgetId}",
-        "definition": {
-          "entityName": "Budget",
-          "schema": {
-            "$ref": "#/backend/entities/Budget"
-          },
-          "description": "Stores budget data, associated with a client and owned by the user. Includes denormalized 'userId' and 'clientId' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The ID of the user who owns the budget."
-            },
-            {
-              "name": "clientId",
-              "description": "The ID of the client associated with the budget."
-            },
-            {
-              "name": "budgetId",
-              "description": "The ID of the budget."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/dailyRates/{dailyRateId}",
-        "definition": {
-          "entityName": "DailyRate",
-          "schema": {
-            "$ref": "#/backend/entities/DailyRate"
-          },
-          "description": "Stores daily rate configurations, owned by the user. Includes denormalized 'userId' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The ID of the user who owns the daily rate configuration."
-            },
-            {
-              "name": "dailyRateId",
-              "description": "The ID of the daily rate configuration."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to be secure, scalable, and easily debuggable, following the core design principles and strategy mandates. It avoids hierarchical authorization dependencies (`get()` calls) by denormalizing authorization data, ensuring atomic operations and simplified debugging. The structure also ensures that all documents in a collection share the same security requirements. Access modeling is standardized with path-based ownership for user-owned data and membership maps for collaborative data.\n\nClients are stored under `/users/{userId}/clients/{clientId}` to ensure path-based ownership. Budgets, which are 1:N with Clients, are stored under `/users/{userId}/clients/{clientId}/budgets/{budgetId}` for similar path-based ownership. DailyRates are stored under `/users/{userId}/dailyRates/{dailyRateId}`. This structure allows for simple, robust, and easily debuggable security rules based solely on `request.auth.uid` and the document path. The QAPs are supported by this segregation, ensuring secure `list` operations, enforcing invariants such as ownership and timestamps, and maintaining data clarity through explicit state modeling and predictable schema.\n\nAuthorization Independence is achieved by structuring data in a way that access control can be determined without needing to `get()` data from parent documents. For example, a `budget` is owned by a user because it resides in a path owned by the user. This supports QAPs by ensuring the security rules don't act as filters. The path itself determines the user's access. Finally, the structure allows for easy debugging because the authorization intent is explicit through the path and field names."
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores public information about a user."
+    },
+    "/users/{userId}/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Sub-collection for clients owned by a specific user."
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": { "$ref": "#/entities/Budget" },
+      "description": "Sub-collection for budgets owned by a specific user."
+    },
+    "/users/{userId}/dailyRates/{dailyRateId}": {
+      "schema": { "$ref": "#/entities/DailyRate" },
+      "description": "Sub-collection for daily rates owned by a specific user."
+    }
   }
 }

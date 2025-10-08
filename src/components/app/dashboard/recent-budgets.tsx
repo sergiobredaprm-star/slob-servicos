@@ -2,7 +2,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Budget } from '@/lib/types';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -18,8 +18,7 @@ export function RecentBudgets() {
     () =>
       user && firestore
         ? query(
-            collection(firestore, 'budgets'),
-            where('userId', '==', user.uid),
+            collection(firestore, 'users', user.uid, 'budgets'),
             orderBy('period.from', 'desc'),
             limit(5)
           )

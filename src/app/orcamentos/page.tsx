@@ -29,7 +29,8 @@ import {
 } from '@/components/ui/card';
 import Link from 'next/link';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 
 const statusStyles: { [key in BudgetStatus]: string } = {
   ativo: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
@@ -49,10 +50,20 @@ export default function OrcamentosPage() {
   const { firestore, user } = useFirebase();
 
   const budgetsQuery = useMemoFirebase(() => 
-    user && firestore ? query(collection(firestore, 'budgets'), where('userId', '==', user.uid)) : null
+    user && firestore ? query(collection(firestore, 'users', user.uid, 'budgets')) : null
   , [firestore, user]);
 
   const { data: budgets, isLoading } = useCollection<Budget>(budgetsQuery);
+
+  const getClientNameFromBudget = (budget: Budget) => {
+    if (budget.clientName) return budget.clientName;
+    return 'Cliente não informado';
+  }
+
+  const getTaskFromBudget = (budget: Budget) => {
+    if (budget.task) return budget.task;
+    return 'Tarefa não informada';
+  }
 
   return (
     <div className="space-y-4">
@@ -92,9 +103,9 @@ export default function OrcamentosPage() {
               {!isLoading && budgets && budgets.map((budget) => (
                 <TableRow key={budget.id}>
                   <TableCell className="font-medium">
-                    {budget.clientName}
+                    {getClientNameFromBudget(budget)}
                   </TableCell>
-                  <TableCell>{budget.task}</TableCell>
+                  <TableCell>{getTaskFromBudget(budget)}</TableCell>
                   <TableCell className="text-center">
                     <Badge
                       variant="outline"

@@ -140,7 +140,7 @@ export function BudgetForm() {
         finalTotal = values.total;
       }
 
-      const budgetData: Omit<Budget, 'id'> = {
+      const budgetData: Omit<Budget, 'id' | 'userId'> = {
         clientName: values.clientName,
         clientDescription: values.clientDescription,
         task: values.task,
@@ -150,11 +150,10 @@ export function BudgetForm() {
         deadline: values.deadline,
         total: finalTotal,
         status: 'ativo',
-        userId: user.uid,
       };
 
       try {
-        await saveBudget(firestore, budgetData);
+        await saveBudget(firestore, user.uid, budgetData);
         toast({
           title: 'Orçamento Criado!',
           description: 'O novo orçamento foi salvo com sucesso.',
@@ -483,5 +482,3 @@ export function BudgetForm() {
     </Form>
   );
 }
-
-    
