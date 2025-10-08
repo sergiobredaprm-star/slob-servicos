@@ -95,6 +95,7 @@ export function StatusDistributionChart() {
                 nameKey="name"
                 cx="50%"
                 cy="50%"
+                innerRadius={60}
                 outerRadius={80}
                 labelLine={false}
                 label={({
