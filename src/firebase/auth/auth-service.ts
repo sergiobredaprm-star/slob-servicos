@@ -35,7 +35,12 @@ export const listenForTokenChanges = (auth: Auth) => {
         await clearSessionCookie();
       }
     } else {
-      await clearSessionCookie();
+      // Quando o usuário faz logout ou o token expira do lado do cliente
+      const res = await fetch('/api/auth', { method: 'GET' });
+      const { isAuthenticated } = await res.json();
+      if (isAuthenticated) {
+        await clearSessionCookie();
+      }
     }
   });
 };
@@ -62,6 +67,7 @@ export const signUpUser = async (auth: Auth, email: string, password: string) =>
 export const signOutUser = async (auth: Auth) => {
     try {
         await signOut(auth);
+        await clearSessionCookie();
         return { error: null };
     } catch (error) {
         return { error };

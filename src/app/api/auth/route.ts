@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
-import { initializeFirebaseAdmin } from '@/firebase/auth/firebase-admin';
+import { initializeFirebaseAdmin } from './_firebase-admin';
 
 const adminApp = initializeFirebaseAdmin();
 const adminAuth = getAuth(adminApp);
+
+export async function GET(request: NextRequest) {
+  try {
+    const sessionCookie = request.cookies.get('session')?.value;
+    if (sessionCookie) {
+      await adminAuth.verifySessionCookie(sessionCookie, true);
+      return NextResponse.json({ isAuthenticated: true });
+    }
+    return NextResponse.json({ isAuthenticated: false });
+  } catch (error) {
+    return NextResponse.json({ isAuthenticated: false });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +33,7 @@ export async function POST(request: NextRequest) {
     const options = {
       name: 'session',
       value: sessionCookie,
-      maxAge: expiresIn,
+      maxAge: expiresIn / 1000,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',

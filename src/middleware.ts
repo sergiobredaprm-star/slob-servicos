@@ -6,14 +6,15 @@ const publicRoutes = ['/login', '/signup'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isPublicRoute = publicRoutes.includes(pathname);
 
-  // Deixa as rotas de API do Next e arquivos estáticos passarem
-  if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.startsWith('/static')) {
+  // Deixa as rotas de API e arquivos estáticos passarem livremente
+  if (pathname.startsWith('/api') || pathname.startsWith('/_next') || pathname.includes('.')) {
     return NextResponse.next();
   }
 
-  // Aplica o middleware de autenticação
+  const isPublicRoute = publicRoutes.includes(pathname);
+
+  // Aplica o middleware de autenticação para verificar o cookie de sessão
   const authResult = await authMiddleware(request);
 
   // Se o usuário não estiver autenticado e a rota não for pública, redireciona para o login
@@ -26,7 +27,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // Permite o acesso se nenhuma das condições acima for atendida
+  // Permite o acesso e passa a resposta do authMiddleware (que pode conter cookies modificados)
   return authResult.response;
 }
 

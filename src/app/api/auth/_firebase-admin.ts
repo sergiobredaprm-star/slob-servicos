@@ -1,5 +1,5 @@
 import { initializeApp, getApps, App, applicationDefault } from 'firebase-admin/app';
-import { firebaseConfig } from '../config';
+import { firebaseConfig } from '@/firebase/config';
 
 const adminApps = getApps();
 
