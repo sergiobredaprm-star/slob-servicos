@@ -1,3 +1,5 @@
+'use client';
+
 import { BudgetForm } from '@/components/app/budget/budget-form';
 import {
   Card,
