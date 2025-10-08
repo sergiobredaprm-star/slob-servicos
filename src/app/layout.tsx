@@ -18,7 +18,7 @@ import { Suspense } from 'react';
 import { AppContent } from '@/components/app-content';
 
 export const metadata: Metadata = {
-  title: 'OrçaDiária',
+  title: 'SLOB_SERVIÇOS',
   description: 'Crie e gerencie orçamentos com base em diárias programáveis.',
 };
 

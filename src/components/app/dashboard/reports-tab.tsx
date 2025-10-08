@@ -171,7 +171,7 @@ export function ReportsTab() {
     message += `*Concluído:* ${formatCurrency(totalConcluido)}\n`;
     message += `*Ativo:* ${formatCurrency(totalAtivo)}\n`;
     message += `*Cancelado:* ${formatCurrency(totalCancelado)}\n\n`;
-    message += `_Este é um resumo automático gerado pelo OrçaDiária._`;
+    message += `_Este é um resumo automático gerado pelo SLOB_SERVIÇOS._`;
 
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
