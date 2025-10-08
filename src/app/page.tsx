@@ -32,10 +32,10 @@ export default function DashboardPage() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-          <TabsTrigger value="analytics" disabled>
+          <TabsTrigger value="analytics">
             Analytics
           </TabsTrigger>
-          <TabsTrigger value="reports" disabled>
+          <TabsTrigger value="reports">
             Relatórios
           </TabsTrigger>
         </TabsList>
@@ -65,6 +65,36 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+        <TabsContent value="analytics" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            <Card className="col-span-7">
+                <CardHeader>
+                    <CardTitle>Analytics</CardTitle>
+                    <CardDescription>
+                        Análise detalhada dos seus orçamentos.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p>Em breve...</p>
+                </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        <TabsContent value="reports" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                <Card className="col-span-7">
+                    <CardHeader>
+                        <CardTitle>Relatórios</CardTitle>
+                        <CardDescription>
+                            Gere relatórios customizados.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p>Em breve...</p>
+                    </CardContent>
+                </Card>
+            </div>
         </TabsContent>
       </Tabs>
     </div>
