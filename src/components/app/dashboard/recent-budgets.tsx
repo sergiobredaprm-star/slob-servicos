@@ -19,7 +19,7 @@ export function RecentBudgets() {
       user && firestore
         ? query(
             collection(firestore, 'users', user.uid, 'budgets'),
-            orderBy('period.from', 'desc'),
+            orderBy('registrationDate', 'desc'),
             limit(5)
           )
         : null,
