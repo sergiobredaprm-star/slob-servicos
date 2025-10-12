@@ -18,6 +18,10 @@ import { Budget, BudgetStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const chartConfig = {
+  prospecção: {
+    label: 'Prospecção',
+    color: 'hsl(var(--chart-5))',
+  },
   ativo: {
     label: 'Ativo',
     color: 'hsl(var(--chart-2))',
@@ -42,6 +46,7 @@ export function StatusDistributionChart({ budgets }: StatusDistributionChartProp
     if (!budgets) return [];
     
     const counts: { [key in BudgetStatus]: number } = {
+      prospecção: 0,
       ativo: 0,
       concluído: 0,
       cancelado: 0,

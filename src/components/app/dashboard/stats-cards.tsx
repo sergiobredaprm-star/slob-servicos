@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { DollarSign, CheckCircle2, Hourglass, XCircle } from 'lucide-react';
+import { DollarSign, CheckCircle2, Hourglass, XCircle, Search } from 'lucide-react';
 import { useMemo } from 'react';
 import { Budget } from '@/lib/types';
 
@@ -25,6 +25,7 @@ export function StatsCards({ budgets }: StatsCardsProps) {
     if (!budgets) {
       return {
         totalOrcado: 0,
+        totalEmProspeccao: 0,
         totalRecebido: 0,
         totalPendente: 0,
         totalCancelado: 0,
@@ -32,6 +33,9 @@ export function StatsCards({ budgets }: StatsCardsProps) {
     }
     return {
       totalOrcado: budgets.reduce((sum, budget) => sum + budget.total, 0),
+      totalEmProspeccao: budgets
+        .filter((b) => b.status === 'prospecção')
+        .reduce((sum, budget) => sum + budget.total, 0),
       totalRecebido: budgets
         .filter((b) => b.status === 'concluído')
         .reduce((sum, budget) => sum + budget.total, 0),
@@ -46,7 +50,7 @@ export function StatsCards({ budgets }: StatsCardsProps) {
 
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Orçado</CardTitle>
@@ -58,6 +62,20 @@ export function StatsCards({ budgets }: StatsCardsProps) {
           </div>
           <p className="text-xs text-muted-foreground">
             Soma de todos os orçamentos
+          </p>
+        </CardContent>
+      </Card>
+       <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Em Prospecção</CardTitle>
+          <Search className="h-4 w-4 text-gray-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {formatCurrency(financialSummary.totalEmProspeccao)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Aguardando confirmação
           </p>
         </CardContent>
       </Card>

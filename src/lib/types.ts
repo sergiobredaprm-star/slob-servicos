@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
 
-export type BudgetStatus = 'ativo' | 'concluído' | 'cancelado';
+export type BudgetStatus = 'prospecção' | 'ativo' | 'concluído' | 'cancelado';
 export type BudgetType = 'daily' | 'task';
 
 export type Budget = {

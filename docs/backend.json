@@ -91,8 +91,8 @@
         },
         "status": {
           "type": "string",
-          "description": "Status of the budget (e.g., ativo, concluído, cancelado).",
-          "enum": ["ativo", "concluído", "cancelado"]
+          "description": "Status of the budget (e.g., prospecção, ativo, concluído, cancelado).",
+          "enum": ["prospecção", "ativo", "concluído", "cancelado"]
         },
         "userId": {
           "type": "string",

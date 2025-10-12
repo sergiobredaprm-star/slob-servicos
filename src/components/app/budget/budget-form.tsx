@@ -73,7 +73,7 @@ const formSchema = z.object({
     .optional(),
   dailyRate: z.coerce.number().optional(),
   total: z.coerce.number().optional(),
-  status: z.enum(['ativo', 'concluído', 'cancelado']),
+  status: z.enum(['prospecção', 'ativo', 'concluído', 'cancelado']),
 }).refine(data => {
   if (data.budgetType === 'daily') {
     return !!data.period && !!data.dailyRate && data.dailyRate > 0 && !!data.period.from && !!data.period.to && data.period.from < data.period.to;
@@ -137,16 +137,16 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         to: addDays(new Date(), 5),
       },
       total: 0,
-      status: 'ativo',
+      status: 'prospecção',
     },
   });
 
    useEffect(() => {
     if (initialData && clients) {
-      const client = clients.find(c => c.name === initialData.clientName);
-      if (client) {
-        form.setValue('clientId', client.id);
-      }
+        const client = clients.find(c => c.id === initialData.clientId);
+        if (client) {
+            form.setValue('clientId', client.id);
+        }
     }
    }, [initialData, clients, form]);
   
@@ -469,44 +469,48 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
           )}
         />
         
-        {budgetId && (
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Status do Orçamento</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex space-x-4"
-                    >
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="ativo" />
-                        </FormControl>
-                        <FormLabel className="font-normal">Ativo</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="concluído" />
-                        </FormControl>
-                        <FormLabel className="font-normal">Concluído</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="cancelado" />
-                        </FormControl>
-                        <FormLabel className="font-normal">Cancelado</FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-        )}
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Status do Orçamento</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex space-x-4"
+                >
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="prospecção" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Prospecção</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="ativo" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Ativo</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="concluído" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Concluído</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="cancelado" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Cancelado</FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
 
         {budgetType === 'daily' && (
