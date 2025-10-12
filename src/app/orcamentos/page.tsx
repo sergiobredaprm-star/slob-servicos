@@ -138,21 +138,22 @@ export default function OrcamentosPage() {
   }
 
   const getPaymentStatus = (budget: Budget) => {
-    if (budget.status === 'prospecção' || budget.status === 'cancelado' || budget.status === 'concluído') {
-      const totalPaid = budget.paymentHistory?.reduce((acc, p) => acc + p.amount, 0) || 0;
-      if (totalPaid >= budget.total) return 'Pago';
-      return 'N/A';
-    }
-
     const totalPaid = budget.paymentHistory?.reduce((acc, p) => acc + p.amount, 0) || 0;
+
     if (totalPaid >= budget.total) {
       return 'Pago';
     }
+
+    if (budget.status === 'prospecção' || budget.status === 'cancelado') {
+      return 'N/A';
+    }
+
     if (totalPaid > 0) {
       return 'Parcial';
     }
+
     return 'Aguardando';
-  }
+  };
   
   const handleDeleteClick = (budgetId: string) => {
     setSelectedBudgetId(budgetId);
