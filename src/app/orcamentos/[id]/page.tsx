@@ -40,7 +40,7 @@ const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(value);
+  }).format(value || 0);
 };
 
 const formatDate = (date: any) => {
@@ -154,6 +154,37 @@ export default function BudgetDetailsPage() {
 
                  <Separator />
 
+                 <div className="space-y-4">
+                     <div className="grid md:grid-cols-3 gap-4">
+                        <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium">Valor Bruto do Projeto</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-xl font-bold">{formatCurrency(budget.total)}</p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                             <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium">Custo com Material</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-xl font-bold text-red-600">{formatCurrency(budget.materialCost || 0)}</p>
+                            </CardContent>
+                        </Card>
+                         <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium">Lucro do Projeto</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-xl font-bold text-green-600">{formatCurrency(budget.profit || 0)}</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+
+                <Separator />
+
                 <div>
                   <div className="flex justify-between items-center mb-4">
                       <h3 className="text-lg font-semibold font-headline">Pagamentos</h3>
@@ -166,7 +197,7 @@ export default function BudgetDetailsPage() {
                       <div className="grid grid-cols-3 gap-4">
                           <Card>
                               <CardHeader className="pb-2">
-                                  <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
+                                  <CardTitle className="text-sm font-medium">Valor Total (Líquido)</CardTitle>
                               </CardHeader>
                               <CardContent>
                                   <p className="text-xl font-bold">{formatCurrency(budget.total)}</p>
