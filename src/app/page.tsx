@@ -18,7 +18,7 @@ import { ReportsTab } from '@/components/app/dashboard/reports-tab';
 import { StatusDistributionChart } from '@/components/app/dashboard/status-distribution-chart';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Budget } from '@/lib/types';
-import { collection, query }from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { useState, useMemo } from 'react';
 import { format, getMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -34,41 +34,54 @@ export default function DashboardPage() {
   const { firestore, user } = useFirebase();
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
 
-  const budgetsQuery = useMemoFirebase(() => 
-    user && firestore ? query(collection(firestore, 'users', user.uid, 'budgets')) : null
-  , [firestore, user]);
+  const budgetsQuery = useMemoFirebase(
+    () =>
+      user && firestore
+        ? query(collection(firestore, 'users', user.uid, 'budgets'))
+        : null,
+    [firestore, user]
+  );
 
   const { data: allBudgets } = useCollection<Budget>(budgetsQuery);
 
   const availableMonths = useMemo(() => {
     if (!allBudgets) return [];
     const months = new Set<string>();
-    allBudgets.forEach(budget => {
-      const date = (budget.registrationDate as any).toDate ? (budget.registrationDate as any).toDate() : new Date(budget.registrationDate);
-      const monthKey = `${getYear(date)}-${getMonth(date)}`;
-      months.add(monthKey);
+    allBudgets.forEach((budget) => {
+      if (budget.registrationDate) {
+        const date = (budget.registrationDate as any).toDate
+          ? (budget.registrationDate as any).toDate()
+          : new Date(budget.registrationDate);
+        const monthKey = `${getYear(date)}-${getMonth(date)}`;
+        months.add(monthKey);
+      }
     });
-    return Array.from(months).map(monthKey => {
-      const [year, month] = monthKey.split('-');
-      const date = new Date(Number(year), Number(month));
-       return {
-         value: monthKey,
-         label: format(date, 'MMMM yyyy', { locale: ptBR }),
-       };
-    }).sort((a,b) => b.value.localeCompare(a.value));
+    return Array.from(months)
+      .map((monthKey) => {
+        const [year, month] = monthKey.split('-');
+        const date = new Date(Number(year), Number(month));
+        return {
+          value: monthKey,
+          label: format(date, 'MMMM yyyy', { locale: ptBR }),
+        };
+      })
+      .sort((a, b) => b.value.localeCompare(a.value));
   }, [allBudgets]);
 
   const filteredBudgets = useMemo(() => {
+    if (!allBudgets) return [];
     if (selectedMonth === 'all') {
       return allBudgets;
     }
-    return allBudgets?.filter(budget => {
-       const date = (budget.registrationDate as any).toDate ? (budget.registrationDate as any).toDate() : new Date(budget.registrationDate);
+    return allBudgets.filter((budget) => {
+      if (!budget.registrationDate) return false;
+      const date = (budget.registrationDate as any).toDate
+        ? (budget.registrationDate as any).toDate()
+        : new Date(budget.registrationDate);
       const monthKey = `${getYear(date)}-${getMonth(date)}`;
       return monthKey === selectedMonth;
     });
   }, [allBudgets, selectedMonth]);
-
 
   return (
     <div className="flex-1 space-y-4">
@@ -77,14 +90,16 @@ export default function DashboardPage() {
           Painel
         </h1>
         <div className="flex items-center space-x-2">
-           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filtrar por mês" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Meses</SelectItem>
-              {availableMonths.map(month => (
-                <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+              {availableMonths.map((month) => (
+                <SelectItem key={month.value} value={month.value}>
+                  {month.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -120,10 +135,13 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Orçamentos Recentes</CardTitle>
                 <CardDescription>
-                  {selectedMonth === 'all' 
-                    ? `Você tem ${filteredBudgets?.length || 0} orçamentos no total.`
-                    : `Você tem ${filteredBudgets?.length || 0} orçamentos para o mês selecionado.`
-                  }
+                  {selectedMonth === 'all'
+                    ? `Você tem ${
+                        filteredBudgets?.length || 0
+                      } orçamentos no total.`
+                    : `Você tem ${
+                        filteredBudgets?.length || 0
+                      } orçamentos para o mês selecionado.`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -133,7 +151,7 @@ export default function DashboardPage() {
           </div>
         </TabsContent>
         <TabsContent value="analytics" className="space-y-4">
-           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-7">
               <CardHeader>
                 <CardTitle>Analytics</CardTitle>
