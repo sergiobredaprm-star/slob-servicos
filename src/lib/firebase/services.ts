@@ -35,7 +35,7 @@ export async function saveBudget(firestore: Firestore, userId: string, budgetDat
     } else {
         // Create new budget
         const budgetCollection = collection(firestore, 'users', userId, 'budgets');
-        return addDocumentNonBlocking(budgetCollection, {...dataToSave, paymentHistory: []});
+        return addDocumentNonBlocking(budgetCollection, {...dataToSave, paymentHistory: [], materialCost: dataToSave.materialCost || 0, profit: dataToSave.profit || 0 });
     }
 }
 

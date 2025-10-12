@@ -81,6 +81,7 @@ const formSchema = z.object({
     .optional(),
   dailyRate: z.coerce.number().optional(),
   total: z.coerce.number().optional(),
+  materialCost: z.coerce.number().optional(),
   status: z.enum(['prospecção', 'ativo', 'concluído', 'cancelado']),
 }).refine(data => {
   if (data.budgetType === 'daily') {
@@ -151,6 +152,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         to: addDays(new Date(), 5),
       },
       total: 0,
+      materialCost: 0,
       status: 'prospecção',
     },
   });
@@ -190,6 +192,9 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         finalTotal = values.total;
       }
 
+      const materialCost = values.materialCost || 0;
+      const profit = finalTotal - materialCost;
+
       const budgetData: Omit<Budget, 'id'> = {
         clientId: values.clientId,
         clientName: values.clientName,
@@ -201,6 +206,8 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         deadline: values.deadline,
         registrationDate: values.registrationDate,
         total: finalTotal,
+        materialCost: materialCost,
+        profit: profit,
         status: values.status,
         userId: user.uid,
       };
@@ -253,6 +260,8 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   const dailyRateValue = form.watch('dailyRate') || 0;
   const taskTotal = form.watch('total') || 0;
   const total = budgetType === 'daily' ? workDays * dailyRateValue : taskTotal;
+  const materialCost = form.watch('materialCost') || 0;
+  const profit = total - materialCost;
 
   return (
     <Form {...form}>
@@ -297,7 +306,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                             value={client.name}
                             key={client.id}
                             onSelect={() => {
-                              field.onChange(client.id);
+                              form.setValue('clientId', client.id);
                               form.setValue('clientName', client.name);
                               form.setValue('clientDescription', client.notes || '');
                               setIsComboboxOpen(false);
@@ -643,6 +652,23 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
             />
         )}
 
+        <FormField
+            control={form.control}
+            name="materialCost"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Custo com Material (R$)</FormLabel>
+                <FormControl>
+                    <Input type="number" placeholder="0" {...field} value={field.value ?? ''}/>
+                </FormControl>
+                 <FormDescription>
+                    Insira o custo total com materiais para este projeto. Este valor será deduzido do total para calcular seu lucro.
+                </FormDescription>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+
 
         <Card className="bg-muted/50">
             <CardHeader>
@@ -661,9 +687,17 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                     </div>
                   </>
                 )}
-                <div className="flex justify-between font-bold text-lg">
-                    <span>Total:</span>
+                 <div className="flex justify-between font-bold text-lg border-b pb-2">
+                    <span>Valor Total:</span>
                     <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
+                </div>
+                <div className="flex justify-between pt-2">
+                    <span className="text-muted-foreground">Custo com Material:</span>
+                    <span className="text-red-600">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(materialCost)}</span>
+                </div>
+                 <div className="flex justify-between font-bold text-lg text-green-600">
+                    <span>Lucro do Projeto:</span>
+                    <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(profit)}</span>
                 </div>
             </CardContent>
         </Card>

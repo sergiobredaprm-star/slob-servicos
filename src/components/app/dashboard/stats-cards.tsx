@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { DollarSign, CheckCircle2, Hourglass, XCircle, Search } from 'lucide-react';
+import { DollarSign, CheckCircle2, Hourglass, XCircle, Search, PiggyBank } from 'lucide-react';
 import { useMemo } from 'react';
 import { Budget } from '@/lib/types';
 
@@ -29,11 +29,13 @@ export function StatsCards({ budgets }: StatsCardsProps) {
         totalRecebido: 0,
         totalPendente: 0,
         totalCancelado: 0,
+        lucroTotal: 0,
       };
     }
 
     let totalRecebido = 0;
     let totalPendente = 0;
+    let lucroTotal = 0;
 
     const totalOrcado = budgets.reduce((sum, budget) => sum + budget.total, 0);
     
@@ -51,6 +53,7 @@ export function StatsCards({ budgets }: StatsCardsProps) {
 
       if (budget.status === 'ativo' || budget.status === 'concluído') {
          totalPendente += budget.total - paidAmount;
+         lucroTotal += budget.profit || 0;
       }
     });
 
@@ -60,12 +63,13 @@ export function StatsCards({ budgets }: StatsCardsProps) {
       totalRecebido,
       totalPendente,
       totalCancelado,
+      lucroTotal,
     };
   }, [budgets]);
 
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Orçado</CardTitle>
@@ -96,6 +100,20 @@ export function StatsCards({ budgets }: StatsCardsProps) {
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Lucro Total</CardTitle>
+          <PiggyBank className="h-4 w-4 text-emerald-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {formatCurrency(financialSummary.lucroTotal)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Soma dos lucros de projetos
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Recebido</CardTitle>
           <CheckCircle2 className="h-4 w-4 text-green-500" />
         </CardHeader>
@@ -118,7 +136,7 @@ export function StatsCards({ budgets }: StatsCardsProps) {
             {formatCurrency(financialSummary.totalPendente)}
           </div>
           <p className="text-xs text-muted-foreground">
-            Saldo devedor de orçamentos ativos/concluídos
+            Saldo devedor de orçamentos
           </p>
         </CardContent>
       </Card>

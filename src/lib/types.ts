@@ -26,6 +26,8 @@ export type Budget = {
   deadline?: Date | Timestamp;
   registrationDate: Date | Timestamp;
   total: number;
+  materialCost?: number;
+  profit?: number;
   status: BudgetStatus;
   userId: string;
   paymentHistory?: Payment[];

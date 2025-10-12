@@ -114,6 +114,14 @@
           "type": "number",
           "description": "Total amount of the budget."
         },
+        "materialCost": {
+          "type": "number",
+          "description": "Cost of materials for the project."
+        },
+        "profit": {
+          "type": "number",
+          "description": "Calculated profit for the project (total - materialCost)."
+        },
         "status": {
           "type": "string",
           "description": "Status of the budget (e.g., prospecção, ativo, concluído, cancelado).",
