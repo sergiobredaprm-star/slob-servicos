@@ -20,13 +20,21 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Sparkles, Loader2 } from 'lucide-react';
+import { CalendarIcon, Sparkles, Loader2, Check, ChevronsUpDown } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -251,35 +259,63 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
           control={form.control}
           name="clientId"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="flex flex-col">
               <FormLabel>Nome do Cliente</FormLabel>
-               <Select
-                onValueChange={(value) => {
-                  const selectedClient = clients?.find(c => c.id === value);
-                  if (selectedClient) {
-                    field.onChange(value);
-                    form.setValue('clientName', selectedClient.name);
-                    form.setValue('clientDescription', selectedClient.notes || '');
-                  }
-                }}
-                value={field.value}
-                disabled={isLoadingClients}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um cliente" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {isLoadingClients && <SelectItem value="loading" disabled>Carregando clientes...</SelectItem>}
-                  {sortedClients?.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                  {!isLoadingClients && sortedClients?.length === 0 && <SelectItem value="no-clients" disabled>Nenhum cliente cadastrado</SelectItem>}
-                </SelectContent>
-              </Select>
+               <Popover>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className={cn(
+                        "w-full justify-between",
+                        !field.value && "text-muted-foreground"
+                      )}
+                      disabled={isLoadingClients}
+                    >
+                      {isLoadingClients
+                        ? "Carregando clientes..."
+                        : field.value
+                        ? sortedClients?.find(
+                            (client) => client.id === field.value
+                          )?.name
+                        : "Selecione um cliente"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput placeholder="Procurar cliente..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {sortedClients?.map((client) => (
+                          <CommandItem
+                            value={client.name}
+                            key={client.id}
+                            onSelect={() => {
+                              field.onChange(client.id);
+                              form.setValue('clientName', client.name);
+                              form.setValue('clientDescription', client.notes || '');
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                client.id === field.value
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            {client.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <FormMessage />
             </FormItem>
           )}
