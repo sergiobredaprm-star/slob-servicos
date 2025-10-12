@@ -63,7 +63,7 @@ export function AddPaymentDialog({
         path: ['amount'],
     })),
     defaultValues: {
-      amount: undefined,
+      amount: '' as any, // Use empty string to avoid uncontrolled input error
       date: new Date(),
       notes: '',
     },

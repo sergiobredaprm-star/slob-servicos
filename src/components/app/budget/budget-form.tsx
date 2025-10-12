@@ -627,7 +627,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                   <FormItem>
                   <FormLabel>Valor da Diária (R$)</FormLabel>
                   <FormControl>
-                      <Input type="number" placeholder="150" {...field} value={field.value ?? ''}/>
+                      <Input type="number" placeholder="150" {...field} value={field.value || ''}/>
                   </FormControl>
                   <FormMessage />
                   </FormItem>
@@ -644,7 +644,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                 <FormItem>
                 <FormLabel>Valor Total da Tarefa (R$)</FormLabel>
                 <FormControl>
-                    <Input type="number" placeholder="500" {...field} value={field.value ?? ''}/>
+                    <Input type="number" placeholder="500" {...field} value={field.value || ''}/>
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -659,7 +659,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                 <FormItem>
                 <FormLabel>Custo com Material (R$)</FormLabel>
                 <FormControl>
-                    <Input type="number" placeholder="0" {...field} value={field.value ?? ''}/>
+                    <Input type="number" placeholder="0" {...field} value={field.value || ''}/>
                 </FormControl>
                  <FormDescription>
                     Insira o custo total com materiais para este projeto. Este valor será deduzido do total para calcular seu lucro.
