@@ -67,7 +67,7 @@ export function StatusDistributionChart({ budgets }: StatusDistributionChartProp
   const totalBudgets = statusData.reduce((acc, curr) => acc + curr.value, 0);
   
   return (
-    <Card>
+    <Card className="col-span-7">
       <CardHeader>
         <CardTitle>Distribuição por Status</CardTitle>
         <CardDescription>

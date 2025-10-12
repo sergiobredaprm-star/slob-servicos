@@ -152,17 +152,7 @@ export default function DashboardPage() {
         </TabsContent>
         <TabsContent value="analytics" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-7">
-              <CardHeader>
-                <CardTitle>Analytics</CardTitle>
-                <CardDescription>
-                  Análise detalhada dos seus orçamentos.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StatusDistributionChart budgets={allBudgets} />
-              </CardContent>
-            </Card>
+              <StatusDistributionChart budgets={filteredBudgets} />
           </div>
         </TabsContent>
         <TabsContent value="reports" className="space-y-4">
