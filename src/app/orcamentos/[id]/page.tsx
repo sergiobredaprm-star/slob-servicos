@@ -33,7 +33,8 @@ const formatCurrency = (value: number) => {
 
 const formatDate = (date: any) => {
   if (!date) return 'N/A';
-  return format((date as any).toDate(), 'dd/MM/yyyy', { locale: ptBR });
+  const d = (date as any).toDate ? (date as any).toDate() : new Date(date);
+  return format(d, 'dd/MM/yyyy', { locale: ptBR });
 }
 
 export default function BudgetDetailsPage() {
@@ -121,6 +122,10 @@ export default function BudgetDetailsPage() {
                      <div className="space-y-1">
                         <p className="font-medium text-muted-foreground">Prazo de Entrega</p>
                         <p>{formatDate(budget.deadline)}</p>
+                    </div>
+                     <div className="space-y-1">
+                        <p className="font-medium text-muted-foreground">Data de Registro</p>
+                        <p>{formatDate(budget.registrationDate)}</p>
                     </div>
                 </div>
             </CardContent>

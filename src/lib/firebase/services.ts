@@ -14,6 +14,9 @@ function convertDatesToTimestamps(data: any): any {
     if (dataToSave.deadline && dataToSave.deadline instanceof Date) {
         dataToSave.deadline = Timestamp.fromDate(dataToSave.deadline);
     }
+    if (dataToSave.registrationDate && dataToSave.registrationDate instanceof Date) {
+        dataToSave.registrationDate = Timestamp.fromDate(dataToSave.registrationDate);
+    }
     return dataToSave;
 }
 

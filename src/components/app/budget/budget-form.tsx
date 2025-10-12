@@ -54,6 +54,9 @@ const formSchema = z.object({
     message: 'Selecione um cliente.',
   }),
   clientDescription: z.string().optional(),
+  registrationDate: z.date({
+    required_error: "A data de registro é obrigatória.",
+  }),
   budgetType: z.enum(['daily', 'task'], {
     required_error: 'Você precisa selecionar um tipo de orçamento.',
   }),
@@ -113,6 +116,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: initialData ? {
       ...initialData,
+       registrationDate: initialData.registrationDate as Date | undefined,
        period: {
         from: initialData.period?.from as Date | undefined,
         to: initialData.period?.to as Date | undefined,
@@ -121,6 +125,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
     } : {
       clientName: '',
       clientDescription: '',
+      registrationDate: new Date(),
       task: '',
       budgetType: 'daily',
       dailyRate: 150,
@@ -135,6 +140,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   
   const [date, setDate] = useState<DateRange | undefined>(form.getValues('period'));
   const [deadline, setDeadline] = useState<Date | undefined>(form.getValues('deadline'));
+  const [registrationDate, setRegistrationDate] = useState<Date | undefined>(form.getValues('registrationDate'));
 
   const budgetType = form.watch('budgetType');
 
@@ -165,6 +171,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         dailyRate: values.dailyRate,
         period: values.period,
         deadline: values.deadline,
+        registrationDate: values.registrationDate,
         total: finalTotal,
         status: values.status,
         userId: user.uid,
@@ -275,38 +282,46 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <FormField
-            control={form.control}
-            name="budgetType"
-            render={({ field }) => (
-                <FormItem className="space-y-3">
-                <FormLabel>Tipo de Orçamento</FormLabel>
-                <FormControl>
-                    <RadioGroup
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    className="flex flex-col space-y-1"
-                    >
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                        <RadioGroupItem value="daily" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                        Por Diária
-                        </FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                        <RadioGroupItem value="task" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                        Por Tarefa (Valor Fechado)
-                        </FormLabel>
-                    </FormItem>
-                    </RadioGroup>
-                </FormControl>
-                <FormMessage />
+              control={form.control}
+              name="registrationDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Data de Registro</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={'outline'}
+                          className={cn(
+                            'pl-3 text-left font-normal',
+                            !registrationDate && 'text-muted-foreground'
+                          )}
+                        >
+                          {registrationDate ? (
+                            format(registrationDate, 'PPP', { locale: ptBR })
+                          ) : (
+                            <span>Escolha uma data</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={registrationDate}
+                        onSelect={(date) => {
+                          setRegistrationDate(date);
+                          if(date) field.onChange(date);
+                        }}
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
                 </FormItem>
-            )}
+              )}
             />
             <FormField
               control={form.control}
@@ -352,6 +367,41 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
             />
         </div>
         
+         <FormField
+            control={form.control}
+            name="budgetType"
+            render={({ field }) => (
+                <FormItem className="space-y-3">
+                <FormLabel>Tipo de Orçamento</FormLabel>
+                <FormControl>
+                    <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex flex-col space-y-1"
+                    >
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="daily" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                        Por Diária
+                        </FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="task" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                        Por Tarefa (Valor Fechado)
+                        </FormLabel>
+                    </FormItem>
+                    </RadioGroup>
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+
         <FormField
           control={form.control}
           name="task"

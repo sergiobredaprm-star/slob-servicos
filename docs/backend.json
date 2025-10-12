@@ -80,6 +80,11 @@
           "type": "string",
           "format": "date-time"
         },
+        "registrationDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date the budget was registered."
+        },
         "total": {
           "type": "number",
           "description": "Total amount of the budget."
@@ -100,7 +105,8 @@
         "budgetType",
         "total",
         "status",
-        "userId"
+        "userId",
+        "registrationDate"
       ]
     },
     "DailyRate": {
