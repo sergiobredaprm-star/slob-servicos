@@ -1,6 +1,6 @@
 'use client';
 
-import { Budget, BudgetStatus } from '@/lib/types';
+import { Budget, BudgetStatus, Client } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -30,7 +30,7 @@ import {
 import Link from 'next/link';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +43,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { deleteBudget } from '@/lib/firebase/services';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+
 
 const statusStyles: { [key in BudgetStatus]: string } = {
   prospecção: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
@@ -72,12 +77,35 @@ export default function OrcamentosPage() {
   const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
+  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [taskFilter, setTaskFilter] = useState<string>('');
+  const [isComboboxOpen, setIsComboboxOpen] = useState(false);
 
   const budgetsQuery = useMemoFirebase(() => 
     user && firestore ? query(collection(firestore, 'users', user.uid, 'budgets')) : null
   , [firestore, user]);
 
   const { data: budgets, isLoading } = useCollection<Budget>(budgetsQuery);
+
+  const clientsQuery = useMemoFirebase(() =>
+    user && firestore ? query(collection(firestore, 'users', user.uid, 'clients')) : null
+  , [firestore, user]);
+  
+  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
+
+  const sortedClients = useMemo(() => {
+    if (!clients) return [];
+    return [...clients].sort((a, b) => a.name.localeCompare(b.name));
+  }, [clients]);
+
+  const filteredBudgets = useMemo(() => {
+    if (!budgets) return [];
+    return budgets.filter(budget => {
+      const clientMatch = clientFilter ? budget.clientId === clientFilter : true;
+      const taskMatch = taskFilter ? budget.task.toLowerCase().includes(taskFilter.toLowerCase()) : true;
+      return clientMatch && taskMatch;
+    })
+  }, [budgets, clientFilter, taskFilter]);
 
   const getClientNameFromBudget = (budget: Budget) => {
     if (budget.clientName) return budget.clientName;
@@ -149,10 +177,63 @@ export default function OrcamentosPage() {
         <CardHeader>
           <CardTitle>Lista de Orçamentos</CardTitle>
           <CardDescription>
-            Gerencie todos os seus orçamentos em um só lugar.
+            Gerencie e filtre todos os seus orçamentos em um só lugar.
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4 mb-4">
+            <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={isComboboxOpen}
+                      className="w-full sm:w-[250px] justify-between"
+                      disabled={isLoadingClients}
+                    >
+                      {isLoadingClients
+                        ? "Carregando..."
+                        : clientFilter
+                        ? sortedClients?.find(c => c.id === clientFilter)?.name
+                        : "Filtrar por cliente..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                  <Command>
+                    <CommandInput placeholder="Procurar cliente..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem onSelect={() => setClientFilter(null)}>
+                            <Check className={cn("mr-2 h-4 w-4", !clientFilter ? "opacity-100" : "opacity-0")}/>
+                            Todos os clientes
+                        </CommandItem>
+                        {sortedClients?.map((client) => (
+                          <CommandItem
+                            key={client.id}
+                            value={client.name}
+                            onSelect={() => {
+                              setClientFilter(client.id === clientFilter ? null : client.id);
+                              setIsComboboxOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", client.id === clientFilter ? "opacity-100" : "opacity-0")}/>
+                            {client.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+            </Popover>
+            <Input
+              placeholder="Filtrar por tarefa..."
+              value={taskFilter}
+              onChange={(e) => setTaskFilter(e.target.value)}
+              className="w-full sm:w-[250px]"
+            />
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -168,7 +249,7 @@ export default function OrcamentosPage() {
             </TableHeader>
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={6} className="text-center">Carregando...</TableCell></TableRow>}
-              {!isLoading && budgets && budgets.map((budget) => {
+              {!isLoading && filteredBudgets && filteredBudgets.map((budget) => {
                 const paymentStatus = getPaymentStatus(budget);
                 return (
                   <TableRow key={budget.id}>
@@ -231,7 +312,7 @@ export default function OrcamentosPage() {
                   </TableRow>
                 )
               })}
-              {!isLoading && (!budgets || budgets.length === 0) && <TableRow><TableCell colSpan={6} className="text-center">Nenhum orçamento encontrado.</TableCell></TableRow>}
+              {!isLoading && (!filteredBudgets || filteredBudgets.length === 0) && <TableRow><TableCell colSpan={6} className="text-center">Nenhum orçamento encontrado.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
