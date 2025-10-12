@@ -50,9 +50,10 @@ import {
 import { collection, query } from 'firebase/firestore';
 
 const formSchema = z.object({
-  clientName: z.string().min(1, {
+  clientId: z.string().min(1, {
     message: 'Selecione um cliente.',
   }),
+  clientName: z.string(),
   clientDescription: z.string().optional(),
   registrationDate: z.date({
     required_error: "A data de registro é obrigatória.",
@@ -122,7 +123,9 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         to: initialData.period?.to as Date | undefined,
       },
       deadline: initialData.deadline as Date | undefined,
+      clientId: initialData.clientId,
     } : {
+      clientId: '',
       clientName: '',
       clientDescription: '',
       registrationDate: new Date(),
@@ -137,6 +140,15 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       status: 'ativo',
     },
   });
+
+   useEffect(() => {
+    if (initialData && clients) {
+      const client = clients.find(c => c.name === initialData.clientName);
+      if (client) {
+        form.setValue('clientId', client.id);
+      }
+    }
+   }, [initialData, clients, form]);
   
   const [date, setDate] = useState<DateRange | undefined>(form.getValues('period'));
   const [deadline, setDeadline] = useState<Date | undefined>(form.getValues('deadline'));
@@ -164,6 +176,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       }
 
       const budgetData: Omit<Budget, 'id'> = {
+        clientId: values.clientId,
         clientName: values.clientName,
         clientDescription: values.clientDescription,
         task: values.task,
@@ -231,17 +244,20 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
-          name="clientName"
+          name="clientId"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Nome do Cliente</FormLabel>
                <Select
                 onValueChange={(value) => {
                   const selectedClient = clients?.find(c => c.id === value);
-                  field.onChange(selectedClient?.name);
-                  form.setValue('clientDescription', selectedClient?.notes || '');
+                  if (selectedClient) {
+                    field.onChange(value);
+                    form.setValue('clientName', selectedClient.name);
+                    form.setValue('clientDescription', selectedClient.notes || '');
+                  }
                 }}
-                defaultValue={field.value}
+                value={field.value}
                 disabled={isLoadingClients}
               >
                 <FormControl>

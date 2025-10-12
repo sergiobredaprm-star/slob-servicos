@@ -5,6 +5,7 @@ export type BudgetType = 'daily' | 'task';
 
 export type Budget = {
   id: string;
+  clientId: string;
   clientName: string;
   clientDescription?: string;
   task: string;
