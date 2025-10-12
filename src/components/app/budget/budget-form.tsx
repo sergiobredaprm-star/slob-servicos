@@ -31,7 +31,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useMemo } from 'react';
 import { getTaskSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
@@ -112,6 +112,11 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   , [firestore, user]);
 
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
+
+  const sortedClients = useMemo(() => {
+    if (!clients) return [];
+    return [...clients].sort((a, b) => a.name.localeCompare(b.name));
+  }, [clients]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -123,7 +128,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         to: initialData.period?.to as Date | undefined,
       },
       deadline: initialData.deadline as Date | undefined,
-      clientId: initialData.clientId,
+      clientId: clients?.find(c => c.name === initialData.clientName)?.id || '',
     } : {
       clientId: '',
       clientName: '',
@@ -267,12 +272,12 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                 </FormControl>
                 <SelectContent>
                   {isLoadingClients && <SelectItem value="loading" disabled>Carregando clientes...</SelectItem>}
-                  {clients?.map((client) => (
+                  {sortedClients?.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.name}
                     </SelectItem>
                   ))}
-                  {!isLoadingClients && clients?.length === 0 && <SelectItem value="no-clients" disabled>Nenhum cliente cadastrado</SelectItem>}
+                  {!isLoadingClients && sortedClients?.length === 0 && <SelectItem value="no-clients" disabled>Nenhum cliente cadastrado</SelectItem>}
                 </SelectContent>
               </Select>
               <FormMessage />
