@@ -44,7 +44,7 @@ export default function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-4">
               <CardHeader>
-                <CardTitle>Orçamentos Recentes</CardTitle>
+                <CardTitle>Orçamentos</CardTitle>
                 <CardDescription>
                   Visão geral dos seus orçamentos mais recentes.
                 </CardDescription>
