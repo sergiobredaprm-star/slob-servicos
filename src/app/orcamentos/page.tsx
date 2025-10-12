@@ -106,6 +106,26 @@ export default function OrcamentosPage() {
       return clientMatch && taskMatch;
     })
   }, [budgets, clientFilter, taskFilter]);
+  
+  const clientSummary = useMemo(() => {
+    if (!clientFilter || !budgets) {
+      return null;
+    }
+    const clientBudgets = budgets.filter(b => b.clientId === clientFilter);
+    const activeAndCompletedTotal = clientBudgets
+      .filter(b => b.status === 'ativo' || b.status === 'concluído')
+      .reduce((sum, b) => sum + b.total, 0);
+
+    if (activeAndCompletedTotal > 0) {
+      return (
+        <div className="flex items-center text-sm font-medium">
+          Total (Ativo/Concluído): 
+          <span className="ml-2 font-bold text-lg">{formatCurrency(activeAndCompletedTotal)}</span>
+        </div>
+      );
+    }
+    return null;
+  }, [budgets, clientFilter]);
 
   const getClientNameFromBudget = (budget: Budget) => {
     if (budget.clientName) return budget.clientName;
@@ -181,7 +201,7 @@ export default function OrcamentosPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-4 items-center">
             <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
                 <PopoverTrigger asChild>
                     <Button
@@ -233,6 +253,11 @@ export default function OrcamentosPage() {
               onChange={(e) => setTaskFilter(e.target.value)}
               className="w-full sm:w-[250px]"
             />
+            {clientSummary && (
+                <div className="ml-auto">
+                    {clientSummary}
+                </div>
+            )}
           </div>
           <Table>
             <TableHeader>
