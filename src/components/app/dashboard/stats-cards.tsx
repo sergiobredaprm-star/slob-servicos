@@ -31,20 +31,35 @@ export function StatsCards({ budgets }: StatsCardsProps) {
         totalCancelado: 0,
       };
     }
+
+    let totalRecebido = 0;
+    let totalPendente = 0;
+
+    const totalOrcado = budgets.reduce((sum, budget) => sum + budget.total, 0);
+    
+    const totalEmProspeccao = budgets
+      .filter((b) => b.status === 'prospecção')
+      .reduce((sum, budget) => sum + budget.total, 0);
+
+    const totalCancelado = budgets
+      .filter((b) => b.status === 'cancelado')
+      .reduce((sum, budget) => sum + budget.total, 0);
+
+    budgets.forEach((budget) => {
+      const paidAmount = budget.paymentHistory?.reduce((sum, p) => sum + p.amount, 0) || 0;
+      totalRecebido += paidAmount;
+
+      if (budget.status === 'ativo' || budget.status === 'concluído') {
+         totalPendente += budget.total - paidAmount;
+      }
+    });
+
     return {
-      totalOrcado: budgets.reduce((sum, budget) => sum + budget.total, 0),
-      totalEmProspeccao: budgets
-        .filter((b) => b.status === 'prospecção')
-        .reduce((sum, budget) => sum + budget.total, 0),
-      totalRecebido: budgets
-        .filter((b) => b.status === 'concluído')
-        .reduce((sum, budget) => sum + budget.total, 0),
-      totalPendente: budgets
-        .filter((b) => b.status === 'ativo')
-        .reduce((sum, budget) => sum + budget.total, 0),
-      totalCancelado: budgets
-        .filter((b) => b.status === 'cancelado')
-        .reduce((sum, budget) => sum + budget.total, 0),
+      totalOrcado,
+      totalEmProspeccao,
+      totalRecebido,
+      totalPendente,
+      totalCancelado,
     };
   }, [budgets]);
 
@@ -89,7 +104,7 @@ export function StatsCards({ budgets }: StatsCardsProps) {
             {formatCurrency(financialSummary.totalRecebido)}
           </div>
           <p className="text-xs text-muted-foreground">
-            Orçamentos concluídos
+            Soma de todos os pagamentos
           </p>
         </CardContent>
       </Card>
@@ -103,7 +118,7 @@ export function StatsCards({ budgets }: StatsCardsProps) {
             {formatCurrency(financialSummary.totalPendente)}
           </div>
           <p className="text-xs text-muted-foreground">
-            Orçamentos ativos
+            Saldo devedor de orçamentos ativos/concluídos
           </p>
         </CardContent>
       </Card>

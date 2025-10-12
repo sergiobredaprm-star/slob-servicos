@@ -45,6 +45,31 @@
         "userId"
       ]
     },
+    "Payment": {
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a single payment made towards a budget.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the payment."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the payment."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the payment was made."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any notes related to the payment."
+        }
+      },
+      "required": ["id", "amount", "date"]
+    },
     "Budget": {
       "title": "Budget",
       "type": "object",
@@ -97,6 +122,13 @@
         "userId": {
           "type": "string",
           "description": "The ID of the user who owns this budget."
+        },
+        "paymentHistory": {
+          "type": "array",
+          "description": "A history of payments made for this budget.",
+          "items": {
+            "$ref": "#/entities/Payment"
+          }
         }
       },
       "required": [

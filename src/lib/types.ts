@@ -1,10 +1,18 @@
+'use client';
 import { Timestamp } from 'firebase/firestore';
 
 export type BudgetStatus = 'prospecção' | 'ativo' | 'concluído' | 'cancelado';
 export type BudgetType = 'daily' | 'task';
 
-export type Budget = {
+export type Payment = {
   id: string;
+  amount: number;
+  date: Date | Timestamp;
+  notes?: string;
+};
+
+export type Budget = {
+  id:string;
   clientId: string;
   clientName: string;
   clientDescription?: string;
@@ -20,6 +28,7 @@ export type Budget = {
   total: number;
   status: BudgetStatus;
   userId: string;
+  paymentHistory?: Payment[];
 };
 
 export type DailyRateSettings = {

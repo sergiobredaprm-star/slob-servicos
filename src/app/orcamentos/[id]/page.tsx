@@ -1,5 +1,4 @@
 'use client';
-
 import {
   Card,
   CardContent,
@@ -9,14 +8,26 @@ import {
   CardFooter
 } from '@/components/ui/card';
 import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
-import { Budget, BudgetStatus } from '@/lib/types';
-import { doc } from 'firebase/firestore';
+import { Budget, BudgetStatus, Payment } from '@/lib/types';
+import { doc, Timestamp } from 'firebase/firestore';
 import { useParams, useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { AddPaymentDialog } from '@/components/app/budget/add-payment-dialog';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 
 const statusStyles: { [key in BudgetStatus]: string } = {
   prospecção: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
@@ -43,6 +54,7 @@ export default function BudgetDetailsPage() {
   const router = useRouter();
   const { id } = params;
   const { firestore, user } = useFirebase();
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   const budgetDocRef = useMemoFirebase(
     () =>
@@ -53,6 +65,16 @@ export default function BudgetDetailsPage() {
   );
 
   const { data: budget, isLoading } = useDoc<Budget>(budgetDocRef);
+
+  const { totalPaid, remainingBalance, paymentPercentage } = useMemo(() => {
+    if (!budget) {
+      return { totalPaid: 0, remainingBalance: 0, paymentPercentage: 0 };
+    }
+    const totalPaid = budget.paymentHistory?.reduce((acc, p) => acc + p.amount, 0) || 0;
+    const remainingBalance = budget.total - totalPaid;
+    const paymentPercentage = budget.total > 0 ? (totalPaid / budget.total) * 100 : 0;
+    return { totalPaid, remainingBalance, paymentPercentage };
+  }, [budget]);
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Carregando detalhes...</div>;
@@ -129,14 +151,93 @@ export default function BudgetDetailsPage() {
                         <p>{formatDate(budget.registrationDate)}</p>
                     </div>
                 </div>
-            </CardContent>
-            <CardFooter className="bg-muted/50 p-6 flex justify-end">
-                 <div className="text-right space-y-1">
-                    <p className="font-medium text-muted-foreground">Valor Total do Orçamento</p>
-                    <p className="font-bold text-2xl">{formatCurrency(budget.total)}</p>
+
+                 <Separator />
+
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold font-headline">Pagamentos</h3>
+                      <Button size="sm" onClick={() => setIsPaymentDialogOpen(true)}>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Adicionar Pagamento
+                      </Button>
+                  </div>
+                  <div className="space-y-4">
+                      <div className="grid grid-cols-3 gap-4">
+                          <Card>
+                              <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                  <p className="text-xl font-bold">{formatCurrency(budget.total)}</p>
+                              </CardContent>
+                          </Card>
+                          <Card>
+                              <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium">Total Pago</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                  <p className="text-xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
+                              </CardContent>
+                          </Card>
+                          <Card>
+                              <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium">Saldo Devedor</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                  <p className="text-xl font-bold text-red-600">{formatCurrency(remainingBalance)}</p>
+                              </CardContent>
+                          </Card>
+                      </div>
+                      <div>
+                          <Progress value={paymentPercentage} className="h-2" />
+                          <p className="text-xs text-muted-foreground mt-1 text-right">{paymentPercentage.toFixed(0)}% pago</p>
+                      </div>
+                      
+                      <Card>
+                          <CardHeader>
+                              <CardTitle className="text-base">Histórico de Pagamentos</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                              <Table>
+                                  <TableHeader>
+                                      <TableRow>
+                                          <TableHead>Data</TableHead>
+                                          <TableHead>Valor</TableHead>
+                                          <TableHead>Observações</TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                      {budget.paymentHistory && budget.paymentHistory.length > 0 ? (
+                                          budget.paymentHistory.map(p => (
+                                              <TableRow key={p.id}>
+                                                  <TableCell>{formatDate(p.date)}</TableCell>
+                                                  <TableCell>{formatCurrency(p.amount)}</TableCell>
+                                                  <TableCell>{p.notes || '-'}</TableCell>
+                                              </TableRow>
+                                          ))
+                                      ) : (
+                                          <TableRow>
+                                              <TableCell colSpan={3} className="text-center">
+                                                  Nenhum pagamento registrado.
+                                              </TableCell>
+                                          </TableRow>
+                                      )}
+                                  </TableBody>
+                              </Table>
+                          </CardContent>
+                      </Card>
+                  </div>
                 </div>
-            </CardFooter>
+
+            </CardContent>
         </Card>
+        <AddPaymentDialog
+            isOpen={isPaymentDialogOpen}
+            onOpenChange={setIsPaymentDialogOpen}
+            budgetId={id as string}
+            maxAmount={remainingBalance}
+        />
     </div>
   );
 }

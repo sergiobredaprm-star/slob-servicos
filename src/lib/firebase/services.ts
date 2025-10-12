@@ -1,7 +1,7 @@
 'use client';
-import { collection, Firestore, Timestamp, doc } from 'firebase/firestore';
+import { collection, Firestore, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { Budget } from '@/lib/types';
+import { Budget, Payment } from '@/lib/types';
 
 function convertDatesToTimestamps(data: any): any {
     const dataToSave = { ...data };
@@ -35,7 +35,7 @@ export async function saveBudget(firestore: Firestore, userId: string, budgetDat
     } else {
         // Create new budget
         const budgetCollection = collection(firestore, 'users', userId, 'budgets');
-        return addDocumentNonBlocking(budgetCollection, dataToSave);
+        return addDocumentNonBlocking(budgetCollection, {...dataToSave, paymentHistory: []});
     }
 }
 
@@ -45,4 +45,22 @@ export async function deleteBudget(firestore: Firestore, userId: string, budgetI
     }
     const budgetDoc = doc(firestore, 'users', userId, 'budgets', budgetId);
     return deleteDocumentNonBlocking(budgetDoc);
+}
+
+export async function addPaymentToBudget(firestore: Firestore, userId: string, budgetId: string, payment: Omit<Payment, 'id'>) {
+    if (!userId || !budgetId) {
+        throw new Error("User ID and Budget ID are required to add a payment.");
+    }
+    const budgetDocRef = doc(firestore, 'users', userId, 'budgets', budgetId);
+    const paymentWithId = { 
+        ...payment,
+        id: new Date().toISOString(), // Simple unique ID
+        date: Timestamp.fromDate(payment.date as Date) 
+    };
+
+    // We don't use the non-blocking updater here because we want to await the result
+    // to give feedback to the user. This is a user-interactive action.
+    await updateDoc(budgetDocRef, {
+        paymentHistory: arrayUnion(paymentWithId)
+    });
 }
