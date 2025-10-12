@@ -6,8 +6,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { DollarSign, CheckCircle2, Hourglass, XCircle } from 'lucide-react';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { useMemo } from 'react';
 import { Budget } from '@/lib/types';
 
 const formatCurrency = (value: number) => {
@@ -17,15 +16,12 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-export function StatsCards() {
-  const { firestore, user } = useFirebase();
-  const budgetsQuery = useMemoFirebase(() => 
-    user && firestore ? query(collection(firestore, 'users', user.uid, 'budgets')) : null
-  , [firestore, user]);
+type StatsCardsProps = {
+  budgets: Budget[] | null | undefined;
+};
 
-  const { data: budgets } = useCollection<Budget>(budgetsQuery);
-
-  const financialSummary = useMemoFirebase(() => {
+export function StatsCards({ budgets }: StatsCardsProps) {
+  const financialSummary = useMemo(() => {
     if (!budgets) {
       return {
         totalOrcado: 0,

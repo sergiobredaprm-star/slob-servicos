@@ -7,11 +7,10 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
 import { Budget } from '@/lib/types';
-import { eachMonthOfInterval, endOfYear, format, startOfYear } from 'date-fns';
+import { eachDayOfInterval, eachMonthOfInterval, endOfMonth, endOfYear, format, getMonth, getYear, startOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useMemo } from 'react';
 
 const chartConfig = {
   total: {
@@ -20,57 +19,80 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function Overview() {
-  const { firestore, user } = useFirebase();
+type OverviewProps = {
+  budgets: Budget[] | null | undefined;
+  selectedMonth: string;
+};
 
-  const budgetsQuery = useMemoFirebase(
-    () =>
-      user && firestore
-        ? query(collection(firestore, 'users', user.uid, 'budgets'))
-        : null,
-    [firestore, user]
-  );
+export function Overview({ budgets, selectedMonth }: OverviewProps) {
 
-  const { data: budgets } = useCollection<Budget>(budgetsQuery);
+  const chartData = useMemo(() => {
+    if (!budgets) return [];
 
-  const monthlyTotals = useMemoFirebase(() => {
-    const now = new Date();
-    const months = eachMonthOfInterval({
-      start: startOfYear(now),
-      end: endOfYear(now),
-    });
+    if (selectedMonth === 'all') {
+      const now = new Date();
+      const months = eachMonthOfInterval({
+        start: startOfYear(now),
+        end: endOfYear(now),
+      });
 
-    const totals = months.map(month => ({
-      month: format(month, 'MMM', { locale: ptBR }),
-      total: 0,
-    }));
+      const totals = months.map(month => ({
+        name: format(month, 'MMM', { locale: ptBR }),
+        total: 0,
+      }));
 
-    if (budgets) {
       for (const budget of budgets) {
         if (budget.registrationDate) {
           const registrationDate = (budget.registrationDate as any).toDate ? (budget.registrationDate as any).toDate() : new Date(budget.registrationDate);
           const monthIndex = registrationDate.getMonth();
-          if (totals[monthIndex]) {
+          if (totals[monthIndex] && getYear(registrationDate) === getYear(now)) {
             totals[monthIndex].total += budget.total;
           }
         }
       }
+      return totals;
+
+    } else {
+      const [year, month] = selectedMonth.split('-');
+      const monthDate = new Date(Number(year), Number(month));
+      const daysInMonth = eachDayOfInterval({
+        start: startOfMonth(monthDate),
+        end: endOfMonth(monthDate),
+      });
+
+      const dailyTotals = daysInMonth.map(day => ({
+        name: format(day, 'd'),
+        total: 0,
+      }));
+
+      for (const budget of budgets) {
+        if (budget.registrationDate) {
+          const registrationDate = (budget.registrationDate as any).toDate ? (budget.registrationDate as any).toDate() : new Date(budget.registrationDate);
+          const budgetMonthKey = `${getYear(registrationDate)}-${getMonth(registrationDate)}`;
+          if (budgetMonthKey === selectedMonth) {
+            const dayIndex = registrationDate.getDate() - 1;
+            if (dailyTotals[dayIndex]) {
+              dailyTotals[dayIndex].total += budget.total;
+            }
+          }
+        }
+      }
+       return dailyTotals;
     }
-    
-    return totals;
-  }, [budgets]);
+  }, [budgets, selectedMonth]);
 
 
   return (
     <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
       <ResponsiveContainer width="100%" height={350}>
-        <BarChart data={monthlyTotals}>
+        <BarChart data={chartData}>
           <XAxis
-            dataKey="month"
+            dataKey="name"
             stroke="#888888"
             fontSize={12}
             tickLine={false}
             axisLine={false}
+            label={selectedMonth !== 'all' ? { value: format(new Date(selectedMonth.split('-')[0], selectedMonth.split('-')[1]), 'MMMM', { locale: ptBR }), position: 'insideBottom', offset: -5 } : undefined}
           />
           <YAxis
             stroke="#888888"

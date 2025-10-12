@@ -1,8 +1,6 @@
 'use client';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Budget } from '@/lib/types';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { useMemo } from 'react';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -11,31 +9,30 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-export function RecentBudgets() {
-  const { firestore, user } = useFirebase();
+type RecentBudgetsProps = {
+  budgets: Budget[] | null | undefined;
+};
 
-  const recentBudgetsQuery = useMemoFirebase(
-    () =>
-      user && firestore
-        ? query(
-            collection(firestore, 'users', user.uid, 'budgets'),
-            orderBy('registrationDate', 'desc'),
-            limit(5)
-          )
-        : null,
-    [firestore, user]
-  );
-  
-  const { data: budgets, isLoading } = useCollection<Budget>(recentBudgetsQuery);
+export function RecentBudgets({ budgets: filteredBudgets }: RecentBudgetsProps) {
 
-  if (isLoading) {
-    return <div>Carregando orçamentos recentes...</div>;
+  const sortedBudgets = useMemo(() => {
+    if (!filteredBudgets) return [];
+    return [...filteredBudgets].sort((a, b) => {
+       const dateA = (a.registrationDate as any).toDate ? (a.registrationDate as any).toDate() : new Date(a.registrationDate);
+       const dateB = (b.registrationDate as any).toDate ? (b.registrationDate as any).toDate() : new Date(b.registrationDate);
+       return dateB.getTime() - dateA.getTime();
+    }).slice(0, 5);
+  }, [filteredBudgets]);
+
+
+  if (!filteredBudgets) {
+    return <div>Carregando orçamentos...</div>;
   }
 
 
   return (
     <div className="space-y-8">
-      {budgets?.map((budget) => (
+      {sortedBudgets?.map((budget) => (
         <div key={budget.id} className="flex items-center">
           <div className="space-y-1">
             <p className="text-sm font-medium leading-none">
@@ -48,8 +45,8 @@ export function RecentBudgets() {
           </div>
         </div>
       ))}
-       {!budgets || budgets.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center">Nenhum orçamento recente.</p>
+       {sortedBudgets.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center">Nenhum orçamento para o período selecionado.</p>
       )}
     </div>
   );

@@ -14,8 +14,6 @@ import {
   ChartContainer,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
 import { Budget, BudgetStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
@@ -34,19 +32,12 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function StatusDistributionChart() {
-  const { firestore, user } = useFirebase();
+type StatusDistributionChartProps = {
+  budgets: Budget[] | null | undefined;
+};
 
-  const budgetsQuery = useMemoFirebase(
-    () =>
-      user && firestore
-        ? query(collection(firestore, 'users', user.uid, 'budgets'))
-        : null,
-    [firestore, user]
-  );
-
-  const { data: budgets, isLoading } = useCollection<Budget>(budgetsQuery);
-
+export function StatusDistributionChart({ budgets }: StatusDistributionChartProps) {
+  
   const statusData = React.useMemo(() => {
     if (!budgets) return [];
     
@@ -63,15 +54,17 @@ export function StatusDistributionChart() {
     });
 
     return Object.entries(counts).map(([status, count]) => ({
-      name: status,
+      name: chartConfig[status as BudgetStatus]?.label || status,
       value: count,
       fill: chartConfig[status as BudgetStatus]?.color,
     }));
   }, [budgets]);
 
-  if (isLoading) {
+  if (!budgets) {
       return <div>Carregando análise...</div>;
   }
+  
+  const totalBudgets = statusData.reduce((acc, curr) => acc + curr.value, 0);
   
   return (
     <Card>
@@ -82,59 +75,67 @@ export function StatusDistributionChart() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Tooltip
-                cursor={false}
-                content={<ChartTooltipContent hideLabel />}
-              />
-              <Pie
-                data={statusData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                labelLine={false}
-                label={({
-                  cx,
-                  cy,
-                  midAngle,
-                  innerRadius,
-                  outerRadius,
-                  value,
-                  index,
-                }) => {
-                  const RADIAN = Math.PI / 180;
-                  const radius =
-                    25 + innerRadius + (outerRadius - innerRadius);
-                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+        {totalBudgets > 0 ? (
+          <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Tooltip
+                  cursor={false}
+                  content={<ChartTooltipContent hideLabel />}
+                />
+                <Pie
+                  data={statusData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  labelLine={false}
+                  label={({
+                    cx,
+                    cy,
+                    midAngle,
+                    innerRadius,
+                    outerRadius,
+                    value,
+                    index,
+                  }) => {
+                    const RADIAN = Math.PI / 180;
+                    const radius =
+                      25 + innerRadius + (outerRadius - innerRadius);
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-                  return (
-                    <text
-                      x={x}
-                      y={y}
-                      fill="currentColor"
-                      textAnchor={x > cx ? 'start' : 'end'}
-                      dominantBaseline="central"
-                      className="fill-foreground text-sm"
-                    >
-                      {statusData[index].name} ({value})
-                    </text>
-                  );
-                }}
-              >
-                {statusData.map((entry) => (
-                  <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                ))}
-              </Pie>
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartContainer>
+                    if (value === 0) return null;
+
+                    return (
+                      <text
+                        x={x}
+                        y={y}
+                        fill="currentColor"
+                        textAnchor={x > cx ? 'start' : 'end'}
+                        dominantBaseline="central"
+                        className="fill-foreground text-sm"
+                      >
+                        {statusData[index].name} ({value})
+                      </text>
+                    );
+                  }}
+                >
+                  {statusData.map((entry) => (
+                    <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        ) : (
+          <div className="flex h-[300px] items-center justify-center">
+            <p className="text-muted-foreground">Nenhum dado para exibir.</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
