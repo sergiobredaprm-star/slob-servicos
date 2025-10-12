@@ -114,6 +114,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitPending, startSubmitTransition] = useTransition();
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isComboboxOpen, setIsComboboxOpen] = useState(false);
   
   const clientsQuery = useMemoFirebase(() => 
     user && firestore ? query(collection(firestore, 'users', user.uid, 'clients')) : null
@@ -136,7 +137,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         to: initialData.period?.to as Date | undefined,
       },
       deadline: initialData.deadline as Date | undefined,
-      clientId: clients?.find(c => c.name === initialData.clientName)?.id || '',
+      clientId: initialData.clientId || '',
     } : {
       clientId: '',
       clientName: '',
@@ -159,6 +160,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         const client = clients.find(c => c.id === initialData.clientId);
         if (client) {
             form.setValue('clientId', client.id);
+            form.setValue('clientName', client.name);
         }
     }
    }, [initialData, clients, form]);
@@ -261,7 +263,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
           render={({ field }) => (
             <FormItem className="flex flex-col">
               <FormLabel>Nome do Cliente</FormLabel>
-               <Popover>
+               <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
@@ -298,6 +300,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                               field.onChange(client.id);
                               form.setValue('clientName', client.name);
                               form.setValue('clientDescription', client.notes || '');
+                              setIsComboboxOpen(false);
                             }}
                           >
                             <Check
