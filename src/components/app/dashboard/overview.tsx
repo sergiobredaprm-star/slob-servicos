@@ -47,9 +47,12 @@ export function Overview() {
 
     if (budgets) {
       for (const budget of budgets) {
-        if (budget.period?.from) {
-          const monthIndex = (budget.period.from as any).toDate().getMonth();
-          totals[monthIndex].total += budget.total;
+        if (budget.registrationDate) {
+          const registrationDate = (budget.registrationDate as any).toDate ? (budget.registrationDate as any).toDate() : new Date(budget.registrationDate);
+          const monthIndex = registrationDate.getMonth();
+          if (totals[monthIndex]) {
+            totals[monthIndex].total += budget.total;
+          }
         }
       }
     }
