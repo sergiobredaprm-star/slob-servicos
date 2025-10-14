@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useEffect, useState } from 'react';
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -31,12 +32,41 @@ const formatDate = (date: any) => {
     return format(d, 'dd/MM/yyyy', { locale: ptBR });
 };
 
+const WhatsappIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+);
+
 
 export default function ClientDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const { id } = params;
   const { firestore, user } = useFirebase();
+  const [greeting, setGreeting] = useState('');
+
+  useEffect(() => {
+    const currentHour = new Date().getHours();
+    if (currentHour >= 5 && currentHour < 12) {
+      setGreeting('Bom dia');
+    } else if (currentHour >= 12 && currentHour < 18) {
+      setGreeting('Boa tarde');
+    } else {
+      setGreeting('Boa noite');
+    }
+  }, []);
 
   const clientDocRef = useMemoFirebase(
     () =>
@@ -59,6 +89,9 @@ export default function ClientDetailsPage() {
 
   const {data: budgets, isLoading: isLoadingBudgets} = useCollection<Budget>(budgetsQuery);
 
+  const cleanPhoneNumber = (phone: string) => {
+    return phone.replace(/\D/g, '');
+  };
 
   if (isLoadingClient) {
     return <div className="flex h-screen items-center justify-center">Carregando detalhes do cliente...</div>;
@@ -67,6 +100,8 @@ export default function ClientDetailsPage() {
   if (!client) {
     return <div className="flex h-screen items-center justify-center">Cliente não encontrado.</div>;
   }
+  
+  const whatsappMessage = `${greeting},\n\n(digite aqui a sua mensagem)`;
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
@@ -92,7 +127,7 @@ export default function ClientDetailsPage() {
             </CardHeader>
             <CardContent className="space-y-6 text-sm">
                <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
+                    <div>
                         <p className="font-medium text-muted-foreground flex items-center gap-2"><Mail className="h-4 w-4" /> Email</p>
                         <p>{client.contactEmail || 'Não informado'}</p>
                     </div>
@@ -101,6 +136,22 @@ export default function ClientDetailsPage() {
                         <p>{client.contactPhone || 'Não informado'}</p>
                     </div>
                 </div>
+                {client.contactPhone && (
+                    <div className="flex gap-2">
+                        <Button asChild variant="outline">
+                            <a href={`tel:${cleanPhoneNumber(client.contactPhone)}`}>
+                                <Phone className="mr-2 h-4 w-4" />
+                                Ligar
+                            </a>
+                        </Button>
+                        <Button asChild variant="outline">
+                             <a href={`https://wa.me/${cleanPhoneNumber(client.contactPhone)}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer">
+                               <WhatsappIcon className="mr-2 h-4 w-4" />
+                                WhatsApp
+                            </a>
+                        </Button>
+                    </div>
+                )}
                  <div className="space-y-1">
                     <p className="font-medium text-muted-foreground">Observações</p>
                     <p className="whitespace-pre-wrap">{client.notes || 'Nenhuma observação.'}</p>
