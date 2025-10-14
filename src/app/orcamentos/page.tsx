@@ -47,6 +47,13 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 
 const statusStyles: { [key in BudgetStatus]: string } = {
@@ -79,6 +86,7 @@ export default function OrcamentosPage() {
   const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
   const [clientFilter, setClientFilter] = useState<string | null>(null);
   const [taskFilter, setTaskFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<BudgetStatus | null>(null);
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
 
   const budgetsQuery = useMemoFirebase(() => 
@@ -103,9 +111,10 @@ export default function OrcamentosPage() {
     return budgets.filter(budget => {
       const clientMatch = clientFilter ? budget.clientId === clientFilter : true;
       const taskMatch = taskFilter ? budget.task.toLowerCase().includes(taskFilter.toLowerCase()) : true;
-      return clientMatch && taskMatch;
+      const statusMatch = statusFilter ? budget.status === statusFilter : true;
+      return clientMatch && taskMatch && statusMatch;
     })
-  }, [budgets, clientFilter, taskFilter]);
+  }, [budgets, clientFilter, taskFilter, statusFilter]);
   
   const clientSummary = useMemo(() => {
     if (!clientFilter || !budgets) {
@@ -140,19 +149,23 @@ export default function OrcamentosPage() {
   const getPaymentStatus = (budget: Budget) => {
     const totalPaid = budget.paymentHistory?.reduce((acc, p) => acc + p.amount, 0) || 0;
 
-    if (totalPaid >= budget.total) {
-      return 'Pago';
+    if (totalPaid >= budget.total && budget.total > 0) {
+        return 'Pago';
     }
 
-    if (budget.status === 'prospecção' || budget.status === 'cancelado') {
-      return 'N/A';
+    if (budget.status === 'prospecção' || budget.status === 'cancelado' || budget.total === 0) {
+        return 'N/A';
     }
-
+    
     if (totalPaid > 0) {
-      return 'Parcial';
+        return 'Parcial';
     }
 
-    return 'Aguardando';
+    if (budget.status === 'ativo' || budget.status === 'concluído') {
+      return 'Aguardando';
+    }
+
+    return 'N/A';
   };
   
   const handleDeleteClick = (budgetId: string) => {
@@ -254,6 +267,18 @@ export default function OrcamentosPage() {
               onChange={(e) => setTaskFilter(e.target.value)}
               className="w-full sm:w-[250px]"
             />
+            <Select value={statusFilter ?? 'all'} onValueChange={(value) => setStatusFilter(value === 'all' ? null : value as BudgetStatus)}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filtrar por status..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Status</SelectItem>
+                <SelectItem value="prospecção">Prospecção</SelectItem>
+                <SelectItem value="ativo">Ativo</SelectItem>
+                <SelectItem value="concluído">Concluído</SelectItem>
+                <SelectItem value="cancelado">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
             {clientSummary && (
                 <div className="ml-auto">
                     {clientSummary}
@@ -361,3 +386,5 @@ export default function OrcamentosPage() {
     </div>
   );
 }
+
+    
