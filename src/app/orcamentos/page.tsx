@@ -116,25 +116,34 @@ export default function OrcamentosPage() {
     })
   }, [budgets, clientFilter, taskFilter, statusFilter]);
   
-  const clientSummary = useMemo(() => {
-    if (!clientFilter || !budgets) {
+  const filteredSummary = useMemo(() => {
+    if (!filteredBudgets || filteredBudgets.length === 0) {
       return null;
     }
-    const clientBudgets = budgets.filter(b => b.clientId === clientFilter);
-    const activeAndCompletedTotal = clientBudgets
-      .filter(b => b.status === 'ativo' || b.status === 'concluído')
-      .reduce((sum, b) => sum + b.total, 0);
+    
+    const total = filteredBudgets.reduce((sum, b) => sum + b.total, 0);
 
-    if (activeAndCompletedTotal > 0) {
+    if (total > 0) {
+      const clientName = clientFilter && clients ? clients.find(c => c.id === clientFilter)?.name : null;
+      let label = 'Total dos Filtros:';
+      if(clientName && !statusFilter) {
+          label = `Total (${clientName}):`;
+      } else if (statusFilter && !clientFilter) {
+          label = `Total (${statusFilter}):`;
+      } else if (statusFilter && clientName) {
+          label = `Total (${clientName} / ${statusFilter}):`;
+      }
+
+
       return (
         <div className="flex items-center text-sm font-medium">
-          Total (Ativo/Concluído): 
-          <span className="ml-2 font-bold text-lg">{formatCurrency(activeAndCompletedTotal)}</span>
+          {label} 
+          <span className="ml-2 font-bold text-lg">{formatCurrency(total)}</span>
         </div>
       );
     }
     return null;
-  }, [budgets, clientFilter]);
+  }, [filteredBudgets, clientFilter, statusFilter, clients]);
 
   const getClientNameFromBudget = (budget: Budget) => {
     if (budget.clientName) return budget.clientName;
@@ -149,12 +158,12 @@ export default function OrcamentosPage() {
   const getPaymentStatus = (budget: Budget) => {
     const totalPaid = budget.paymentHistory?.reduce((acc, p) => acc + p.amount, 0) || 0;
 
-    if (totalPaid >= budget.total && budget.total > 0) {
-        return 'Pago';
+    if (budget.status === 'cancelado') {
+        return 'N/A';
     }
 
-    if (budget.status === 'prospecção' || budget.status === 'cancelado' || budget.total === 0) {
-        return 'N/A';
+    if (totalPaid >= budget.total && budget.total > 0) {
+        return 'Pago';
     }
     
     if (totalPaid > 0) {
@@ -239,7 +248,7 @@ export default function OrcamentosPage() {
                     <CommandList>
                       <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
                       <CommandGroup>
-                        <CommandItem onSelect={() => setClientFilter(null)}>
+                        <CommandItem onSelect={() => {setClientFilter(null); setIsComboboxOpen(false);}}>
                             <Check className={cn("mr-2 h-4 w-4", !clientFilter ? "opacity-100" : "opacity-0")}/>
                             Todos os clientes
                         </CommandItem>
@@ -279,9 +288,9 @@ export default function OrcamentosPage() {
                 <SelectItem value="cancelado">Cancelado</SelectItem>
               </SelectContent>
             </Select>
-            {clientSummary && (
+            {filteredSummary && (
                 <div className="ml-auto">
-                    {clientSummary}
+                    {filteredSummary}
                 </div>
             )}
           </div>
