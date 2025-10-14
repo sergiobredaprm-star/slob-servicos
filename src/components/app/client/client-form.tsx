@@ -21,12 +21,16 @@ import { useFirebase, useUser } from '@/firebase';
 import { saveClient } from '@/lib/firebase/client-services';
 import { Loader2 } from 'lucide-react';
 
+const phoneRegex = new RegExp(
+  /^(\+?[1-9]{1,3}\s?)?(\(?[1-9]{2}\)?\s?)?([0-9]{4,5}-?[0-9]{4})$/
+);
+
 const formSchema = z.object({
   name: z.string().min(2, {
     message: 'O nome do cliente deve ter pelo menos 2 caracteres.',
   }),
   contactEmail: z.string().email({ message: 'Por favor, insira um e-mail válido.' }).optional().or(z.literal('')),
-  contactPhone: z.string().optional(),
+  contactPhone: z.string().regex(phoneRegex, 'Número de telefone inválido. Use (xx) xxxxx-xxxx ou (xx) xxxx-xxxx.').optional().or(z.literal('')),
   notes: z.string().optional(),
 });
 
@@ -123,7 +127,7 @@ export function ClientForm({ initialData, clientId }: ClientFormProps) {
             <FormItem>
               <FormLabel>Telefone de Contato</FormLabel>
               <FormControl>
-                <Input placeholder="(99) 99999-9999" {...field} />
+                <Input placeholder="(xx) xxxxx-xxxx" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
