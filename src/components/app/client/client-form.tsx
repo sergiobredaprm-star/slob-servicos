@@ -20,6 +20,7 @@ import { Client } from '@/lib/types';
 import { useFirebase, useUser } from '@/firebase';
 import { saveClient } from '@/lib/firebase/client-services';
 import { Loader2 } from 'lucide-react';
+import { formatPhoneNumber } from '@/lib/utils';
 
 const phoneRegex = new RegExp(
   /^\(\d{2}\)\s\d{4,5}-\d{4}$/
@@ -91,6 +92,11 @@ export function ClientForm({ initialData, clientId }: ClientFormProps) {
     });
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedNumber = formatPhoneNumber(e.target.value);
+    form.setValue('contactPhone', formattedNumber);
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -127,7 +133,12 @@ export function ClientForm({ initialData, clientId }: ClientFormProps) {
             <FormItem>
               <FormLabel>Telefone de Contato</FormLabel>
               <FormControl>
-                <Input placeholder="(xx) xxxxx-xxxx" {...field} />
+                <Input
+                  placeholder="(xx) xxxxx-xxxx"
+                  {...field}
+                  onChange={handlePhoneChange}
+                  maxLength={15}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
