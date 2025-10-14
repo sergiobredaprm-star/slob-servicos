@@ -29,7 +29,7 @@ import {
 import Link from 'next/link';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,12 +42,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { deleteClient } from '@/lib/firebase/client-services';
+import { Input } from '@/components/ui/input';
 
 export default function ClientesPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [filter, setFilter] = useState('');
 
   const clientsQuery = useMemoFirebase(() => 
     user && firestore ? query(collection(firestore, 'users', user.uid, 'clients')) : null
@@ -55,6 +57,13 @@ export default function ClientesPage() {
 
   const { data: clients, isLoading } = useCollection<Client>(clientsQuery);
   
+  const filteredClients = useMemo(() => {
+    if (!clients) return [];
+    return clients.filter(client => 
+      client.name.toLowerCase().includes(filter.toLowerCase())
+    );
+  }, [clients, filter]);
+
   const handleDeleteClick = (clientId: string) => {
     setSelectedClientId(clientId);
     setIsDeleteDialogOpen(true);
@@ -102,6 +111,14 @@ export default function ClientesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+           <div className="mb-4">
+            <Input 
+              placeholder="Filtrar por nome..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -115,7 +132,7 @@ export default function ClientesPage() {
             </TableHeader>
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={4} className="text-center">Carregando...</TableCell></TableRow>}
-              {!isLoading && clients && clients.map((client) => (
+              {!isLoading && filteredClients && filteredClients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">
                     {client.name}
@@ -154,7 +171,7 @@ export default function ClientesPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && (!clients || clients.length === 0) && <TableRow><TableCell colSpan={4} className="text-center">Nenhum cliente encontrado.</TableCell></TableRow>}
+              {!isLoading && (!filteredClients || filteredClients.length === 0) && <TableRow><TableCell colSpan={4} className="text-center">Nenhum cliente encontrado.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
