@@ -14,6 +14,7 @@ import { ThemeToggle } from '@/components/app/theme-toggle';
 import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { signOutUser } from '@/firebase/auth/auth-service';
+import Link from 'next/link';
 
 
 export function UserNav() {
@@ -51,9 +52,13 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>Perfil</DropdownMenuItem>
-          <DropdownMenuItem>Faturamento</DropdownMenuItem>
-          <DropdownMenuItem>Configurações</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/configuracoes">Perfil</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled>Faturamento</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/configuracoes">Configurações</Link>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>Sair</DropdownMenuItem>
