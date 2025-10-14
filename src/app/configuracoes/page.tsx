@@ -22,11 +22,12 @@ import {
 } from '@/components/ui/card';
 import { settings } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { CompanyProfile, DailyRateSettings } from '@/lib/types';
+import { CompanyProfile } from '@/lib/types';
 import { useEffect, useState, useTransition } from 'react';
-import { useFirebase, useUser } from '@/firebase';
+import { useFirebase } from '@/firebase';
 import { getCompanyProfile, saveCompanyProfile } from '@/lib/firebase/company-services';
 import { Loader2 } from 'lucide-react';
+import { updateProfile } from 'firebase/auth';
 
 const settingsSchema = z.object({
   startTime: z.string(),
@@ -44,12 +45,18 @@ const companyProfileSchema = z.object({
   companyTaxId: z.string().optional(),
 });
 
+const userProfileSchema = z.object({
+  displayName: z.string().min(2, { message: 'O nome é obrigatório.' }),
+  photoURL: z.string().url({ message: 'Por favor, insira uma URL válida.' }).optional().or(z.literal('')),
+});
+
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const { firestore, user } = useFirebase();
+  const { firestore, user, auth } = useFirebase();
   const [companyProfileId, setCompanyProfileId] = useState<string | undefined>(undefined);
   const [isSubmitPending, startSubmitTransition] = useTransition();
+  const [isUserSubmitPending, startUserSubmitTransition] = useTransition();
 
   const settingsForm = useForm<z.infer<typeof settingsSchema>>({
     resolver: zodResolver(settingsSchema),
@@ -65,6 +72,14 @@ export default function SettingsPage() {
       companyAddress: '',
       companyWebsite: '',
       companyTaxId: '',
+    },
+  });
+
+  const userProfileForm = useForm<z.infer<typeof userProfileSchema>>({
+    resolver: zodResolver(userProfileSchema),
+    defaultValues: {
+      displayName: '',
+      photoURL: '',
     },
   });
 
@@ -86,6 +101,16 @@ export default function SettingsPage() {
     }
     fetchCompanyProfile();
   }, [user, firestore, companyForm]);
+
+  useEffect(() => {
+    if (user) {
+      userProfileForm.reset({
+        displayName: user.displayName || '',
+        photoURL: user.photoURL || '',
+      });
+    }
+  }, [user, userProfileForm]);
+
 
   function onSettingsSubmit(values: z.infer<typeof settingsSchema>) {
     console.log('Settings saved:', values);
@@ -116,12 +141,89 @@ export default function SettingsPage() {
       }
     });
   }
+  
+   function onUserProfileSubmit(values: z.infer<typeof userProfileSchema>) {
+    if (!auth?.currentUser) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
+      return;
+    }
+    startUserSubmitTransition(async () => {
+      try {
+        await updateProfile(auth.currentUser, {
+          displayName: values.displayName,
+          photoURL: values.photoURL,
+        });
+        toast({
+          title: 'Perfil Atualizado!',
+          description: 'Suas informações de perfil foram salvas.',
+        });
+         // Forçar a atualização do estado do usuário no provider (opcional, mas recomendado)
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event('auth-change'));
+        }
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao Atualizar Perfil',
+          description: 'Não foi possível salvar seu perfil.',
+        });
+      }
+    });
+  }
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight font-headline">
         Configurações
       </h1>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Perfil de Usuário</CardTitle>
+          <CardDescription>
+            Informações pessoais da sua conta.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...userProfileForm}>
+            <form onSubmit={userProfileForm.handleSubmit(onUserProfileSubmit)} className="space-y-6 max-w-lg">
+              <FormField
+                control={userProfileForm.control}
+                name="displayName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome de Exibição</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Seu Nome" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={userProfileForm.control}
+                name="photoURL"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL da Foto do Perfil</FormLabel>
+                    <FormControl>
+                      <Input type="url" placeholder="https://exemplo.com/sua-foto.jpg" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                        Cole a URL de uma imagem para usar como sua foto de perfil.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" disabled={isUserSubmitPending}>
+                {isUserSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar Perfil
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
       
       <Card>
         <CardHeader>

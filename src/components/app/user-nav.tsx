@@ -33,7 +33,7 @@ export function UserNav() {
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
             <AvatarImage
-              src={user?.photoURL ?? `https://picsum.photos/seed/1/40/40`}
+              src={user?.photoURL ?? `https://picsum.photos/seed/${user?.uid || '1'}/40/40`}
               alt="Avatar do usuário"
               data-ai-hint="user avatar"
             />
