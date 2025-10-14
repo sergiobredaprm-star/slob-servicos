@@ -53,10 +53,6 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/configuracoes">Perfil</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled>Faturamento</DropdownMenuItem>
-          <DropdownMenuItem asChild>
             <Link href="/configuracoes">Configurações</Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
