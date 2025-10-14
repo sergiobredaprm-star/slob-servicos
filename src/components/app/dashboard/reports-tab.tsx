@@ -201,11 +201,24 @@ export function ReportsTab() {
     
     message += `${periodStr}\n\n`;
     message += `*Resumo do Relatório*\n`;
-    message += `*Total Geral:* ${formatCurrency(grandTotal)}\n`;
+    message += `*Total Geral (Ativo + Concluído):* ${formatCurrency(grandTotal)}\n`;
     message += `*Concluído:* ${formatCurrency(totalConcluido)}\n`;
     message += `*Ativo:* ${formatCurrency(totalAtivo)}\n`;
-    message += `*Cancelado:* ${formatCurrency(totalCancelado)}\n\n`;
-    message += `_Este é um resumo automático gerado pelo SLOB_SERVIÇOS._`;
+    message += `*Cancelado:* ${formatCurrency(totalCancelado)}\n`;
+    
+    const statusOrder: BudgetStatus[] = ['prospecção', 'ativo', 'concluído', 'cancelado'];
+
+    statusOrder.forEach(status => {
+        const budgetsByStatus = reportData.filter(b => b.status === status);
+        if (budgetsByStatus.length > 0) {
+            message += `\n*${status.charAt(0).toUpperCase() + status.slice(1)}*\n`;
+            budgetsByStatus.forEach(budget => {
+                message += ` • ${budget.task} - ${budget.clientName} (${formatCurrency(budget.total)})\n`;
+            });
+        }
+    });
+
+    message += `\n_Este é um resumo automático gerado pelo SLOB_SERVIÇOS._`;
 
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
