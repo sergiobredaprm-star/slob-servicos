@@ -51,6 +51,7 @@ import { BudgetStatus } from '@/lib/types';
 import { getCompanyProfile } from '@/lib/firebase/company-services';
 
 const statusStyles: { [key in BudgetStatus]: string } = {
+  prospecção: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
   ativo: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
   concluído:
     'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
@@ -112,8 +113,8 @@ export function ReportsTab() {
 
     const q = query(
       collection(firestore, 'users', user.uid, 'budgets'),
-      where('period.from', '>=', Timestamp.fromDate(date.from)),
-      where('period.from', '<=', Timestamp.fromDate(date.to))
+      where('registrationDate', '>=', Timestamp.fromDate(date.from)),
+      where('registrationDate', '<=', Timestamp.fromDate(date.to))
     );
 
     try {
@@ -223,7 +224,7 @@ export function ReportsTab() {
     reportData
       ?.filter((b) => b.status === 'cancelado')
       .reduce((sum, b) => sum + b.total, 0) || 0;
-  const grandTotal = totalAtivo + totalConcluido + totalCancelado;
+  const grandTotal = totalAtivo + totalConcluido;
 
   return (
     <Card className="col-span-7">
