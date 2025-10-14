@@ -149,12 +149,9 @@ export default function ClientesPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() => client.id && navigator.clipboard.writeText(client.id)}
-                        >
-                          Copiar ID
+                        <DropdownMenuItem asChild>
+                           <Link href={`/clientes/${client.id}`}>Ver Detalhes</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
                            <Link href={`/clientes/${client.id}/editar`}>Editar</Link>
                         </DropdownMenuItem>
