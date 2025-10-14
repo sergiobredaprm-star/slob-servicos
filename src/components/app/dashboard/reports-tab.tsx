@@ -18,6 +18,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -188,7 +193,7 @@ export function ReportsTab() {
     doc.save(`relatorio_orcamentos_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
-  const handleShareWhatsApp = () => {
+  const handleShareWhatsApp = (filterStatus?: BudgetStatus) => {
     if (!reportData || !date?.from || !date.to) return;
 
     let message = `*Relatório de Orçamentos - ${companyProfile?.companyName || 'SLOB_SERVIÇOS'}*\n`;
@@ -198,25 +203,38 @@ export function ReportsTab() {
     message += '\n';
     
     const periodStr = `*Período:* ${format(date.from, 'dd/MM/yyyy', { locale: ptBR })} a ${format(date.to, 'dd/MM/yyyy', { locale: ptBR })}`;
-    
     message += `${periodStr}\n\n`;
-    message += `*Resumo do Relatório*\n`;
-    message += `*Total Geral (Ativo + Concluído):* ${formatCurrency(grandTotal)}\n`;
-    message += `*Concluído:* ${formatCurrency(totalConcluido)}\n`;
-    message += `*Ativo:* ${formatCurrency(totalAtivo)}\n`;
-    message += `*Cancelado:* ${formatCurrency(totalCancelado)}\n`;
-    
-    const statusOrder: BudgetStatus[] = ['prospecção', 'ativo', 'concluído', 'cancelado'];
 
-    statusOrder.forEach(status => {
-        const budgetsByStatus = reportData.filter(b => b.status === status);
-        if (budgetsByStatus.length > 0) {
-            message += `\n*${status.charAt(0).toUpperCase() + status.slice(1)}*\n`;
-            budgetsByStatus.forEach(budget => {
-                message += ` • ${budget.task} - ${budget.clientName} (${formatCurrency(budget.total)})\n`;
-            });
-        }
-    });
+    if (filterStatus) {
+      const filteredByStatus = reportData.filter(b => b.status === filterStatus);
+      if (filteredByStatus.length > 0) {
+          const statusTitle = filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1);
+          message += `*Tarefas em ${statusTitle}*\n`;
+          filteredByStatus.forEach(budget => {
+              message += ` • ${budget.task} - ${budget.clientName} (${formatCurrency(budget.total)})\n`;
+          });
+      } else {
+        message += `_Nenhuma tarefa encontrada com o status "${filterStatus}" para este período._\n`;
+      }
+    } else {
+      message += `*Resumo do Relatório*\n`;
+      message += `*Total Geral (Ativo + Concluído):* ${formatCurrency(grandTotal)}\n`;
+      message += `*Concluído:* ${formatCurrency(totalConcluido)}\n`;
+      message += `*Ativo:* ${formatCurrency(totalAtivo)}\n`;
+      message += `*Cancelado:* ${formatCurrency(totalCancelado)}\n`;
+      
+      const statusOrder: BudgetStatus[] = ['prospecção', 'ativo', 'concluído', 'cancelado'];
+
+      statusOrder.forEach(status => {
+          const budgetsByStatus = reportData.filter(b => b.status === status);
+          if (budgetsByStatus.length > 0) {
+              message += `\n*${status.charAt(0).toUpperCase() + status.slice(1)}*\n`;
+              budgetsByStatus.forEach(budget => {
+                  message += ` • ${budget.task} - ${budget.clientName} (${formatCurrency(budget.total)})\n`;
+              });
+          }
+      });
+    }
 
     message += `\n_Este é um resumo automático gerado pelo SLOB_SERVIÇOS._`;
 
@@ -238,6 +256,7 @@ export function ReportsTab() {
       ?.filter((b) => b.status === 'cancelado')
       .reduce((sum, b) => sum + b.total, 0) || 0;
   const grandTotal = totalAtivo + totalConcluido;
+  const allStatus: BudgetStatus[] = ['prospecção', 'ativo', 'concluído', 'cancelado'];
 
   return (
     <Card className="col-span-7">
@@ -310,10 +329,25 @@ export function ReportsTab() {
                         <FileDown className="mr-2 h-4 w-4" />
                         Exportar para PDF
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleShareWhatsApp}>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
                         <WhatsappIcon className="mr-2 h-4 w-4" />
                         Compartilhar no WhatsApp
-                    </DropdownMenuItem>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                           <DropdownMenuItem onClick={() => handleShareWhatsApp()}>
+                            Relatório Completo
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {allStatus.map(status => (
+                            <DropdownMenuItem key={status} onClick={() => handleShareWhatsApp(status)}>
+                              Somente {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
                 </DropdownMenuContent>
                </DropdownMenu>
             </div>
