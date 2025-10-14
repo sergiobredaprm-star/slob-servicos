@@ -101,7 +101,7 @@ export default function ClientDetailsPage() {
     return <div className="flex h-screen items-center justify-center">Cliente não encontrado.</div>;
   }
   
-  const whatsappMessage = `${greeting},\n\n(digite aqui a sua mensagem)`;
+  const whatsappMessage = `${greeting}, Sr(a). ${client.name}`;
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
