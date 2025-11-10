@@ -414,7 +414,7 @@ export default function SettingsPage() {
                                <AvatarFallback>{user?.displayName ? user.displayName.substring(0,2) : user?.email?.substring(0,2).toUpperCase() ?? 'U'}</AvatarFallback>
                             </Avatar>
                             <FormControl>
-                              <>
+                              <div>
                                 <Input 
                                   type="file" 
                                   accept="image/png, image/jpeg, image/gif"
@@ -432,7 +432,7 @@ export default function SettingsPage() {
                                   <Upload className="mr-2 h-4 w-4" />
                                   Trocar Foto
                                 </Button>
-                              </>
+                              </div>
                             </FormControl>
                           </div>
                           <FormDescription>
