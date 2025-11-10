@@ -428,6 +428,49 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Status do Orçamento</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex space-x-4"
+                >
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="prospecção" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Prospecção</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="ativo" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Ativo</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="concluído" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Concluído</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="cancelado" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Cancelado</FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <FormField
               control={form.control}
@@ -600,50 +643,6 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
             </FormItem>
           )}
         />
-        
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel>Status do Orçamento</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className="flex space-x-4"
-                >
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="prospecção" />
-                    </FormControl>
-                    <FormLabel className="font-normal">Prospecção</FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="ativo" />
-                    </FormControl>
-                    <FormLabel className="font-normal">Ativo</FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="concluído" />
-                    </FormControl>
-                    <FormLabel className="font-normal">Concluído</FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="cancelado" />
-                    </FormControl>
-                    <FormLabel className="font-normal">Cancelado</FormLabel>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
 
         {budgetType === 'daily' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
