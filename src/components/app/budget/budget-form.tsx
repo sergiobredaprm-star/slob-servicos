@@ -149,6 +149,11 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
     if (!clients) return [];
     return [...clients].sort((a, b) => a.name.localeCompare(b.name));
   }, [clients]);
+
+  const sortedElectricalServiceItems = useMemo(() => {
+    if (!electricalServiceItems) return [];
+    return [...electricalServiceItems].sort((a, b) => a.name.localeCompare(b.name));
+  }, [electricalServiceItems]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -553,7 +558,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                             <FormLabel className={cn(index > 0 && "sr-only")}>Item</FormLabel>
                              <Select
                               onValueChange={(value) => {
-                                const selectedItem = electricalServiceItems?.find(item => item.name === value);
+                                const selectedItem = sortedElectricalServiceItems?.find(item => item.name === value);
                                 if (selectedItem) {
                                   update(index, { 
                                     name: selectedItem.name, 
@@ -570,7 +575,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {electricalServiceItems?.map(item => (
+                                {sortedElectricalServiceItems?.map(item => (
                                   <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
                                 ))}
                               </SelectContent>
