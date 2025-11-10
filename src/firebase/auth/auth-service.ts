@@ -3,6 +3,8 @@ import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signOut,
+    signInWithPopup,
+    GoogleAuthProvider,
 } from 'firebase/auth';
 
 export const signInUser = async (auth: Auth, email: string, password: string) => {
@@ -31,3 +33,13 @@ export const signOutUser = async (auth: Auth) => {
         return { error };
     }
 }
+
+export const signInWithGoogle = async (auth: Auth) => {
+    const provider = new GoogleAuthProvider();
+    try {
+        const userCredential = await signInWithPopup(auth, provider);
+        return { user: userCredential.user, error: null };
+    } catch (error) {
+        return { user: null, error };
+    }
+};
