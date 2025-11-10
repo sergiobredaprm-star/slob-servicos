@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase/firestore';
 
 export type BudgetStatus = 'prospecção' | 'ativo' | 'concluído' | 'cancelado';
 export type BudgetType = 'daily' | 'task';
+export type ServiceType = 'Pintura' | 'Elétrica' | 'Hidráulica' | 'Alvenaria' | 'Outro';
 
 export type Payment = {
   id: string;
@@ -16,6 +17,7 @@ export type Budget = {
   clientId: string;
   clientName: string;
   clientDescription?: string;
+  serviceType: ServiceType;
   task: string;
   budgetType: BudgetType;
   dailyRate?: number;

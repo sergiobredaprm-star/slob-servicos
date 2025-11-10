@@ -83,6 +83,11 @@
             "type": "string",
             "description": "A short description about the client."
         },
+        "serviceType": {
+          "type": "string",
+          "description": "The type of service for the budget.",
+          "enum": ["Pintura", "Elétrica", "Hidráulica", "Alvenaria", "Outro"]
+        },
         "task": {
           "type": "string",
           "description": "Description of the task to be performed."
@@ -141,6 +146,7 @@
       },
       "required": [
         "clientName",
+        "serviceType",
         "task",
         "budgetType",
         "total",

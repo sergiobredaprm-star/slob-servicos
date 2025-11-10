@@ -44,7 +44,7 @@ import { getTaskSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Budget, Client } from '@/lib/types';
+import { Budget, Client, ServiceType } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { saveBudget } from '@/lib/firebase/services';
@@ -57,12 +57,15 @@ import {
 } from '@/components/ui/select';
 import { collection, query } from 'firebase/firestore';
 
+const serviceTypes: ServiceType[] = ['Pintura', 'Elétrica', 'Hidráulica', 'Alvenaria', 'Outro'];
+
 const formSchema = z.object({
   clientId: z.string().min(1, {
     message: 'Selecione um cliente.',
   }),
   clientName: z.string(),
   clientDescription: z.string().optional(),
+  serviceType: z.string().min(1, { message: 'Selecione um tipo de serviço.'}),
   registrationDate: z.date({
     required_error: "A data de registro é obrigatória.",
   }),
@@ -143,6 +146,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       clientId: '',
       clientName: '',
       clientDescription: '',
+      serviceType: undefined,
       registrationDate: new Date(),
       task: '',
       budgetType: 'daily',
@@ -199,6 +203,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         clientId: values.clientId,
         clientName: values.clientName,
         clientDescription: values.clientDescription,
+        serviceType: values.serviceType as ServiceType,
         task: values.task,
         budgetType: values.budgetType,
         dailyRate: values.dailyRate,
@@ -332,6 +337,30 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
             </FormItem>
           )}
         />
+        
+        <FormField
+          control={form.control}
+          name="serviceType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tipo de Serviço</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo de serviço" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {serviceTypes.map(type => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="clientDescription"
