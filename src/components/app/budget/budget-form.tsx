@@ -404,6 +404,41 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
             </FormItem>
           )}
         />
+        
+        <FormField
+            control={form.control}
+            name="budgetType"
+            render={({ field }) => (
+                <FormItem className="space-y-3">
+                <FormLabel>Tipo de Orçamento</FormLabel>
+                <FormControl>
+                    <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex flex-col space-y-1"
+                    >
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="daily" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                        Por Diária
+                        </FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="task" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                        Por Tarefa (Valor Fechado)
+                        </FormLabel>
+                    </FormItem>
+                    </RadioGroup>
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
 
         <FormField
           control={form.control}
@@ -427,7 +462,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
             </FormItem>
           )}
         />
-        
+
         {budgetType === 'task' && serviceType === 'Pintura' && (
            <Card className="bg-muted/50 p-6">
              <CardHeader className="p-0 pb-4">
@@ -600,7 +635,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
             </div>
           </Card>
         )}
-
+        
         <FormField
           control={form.control}
           name="status"
@@ -730,41 +765,6 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
               )}
             />
         </div>
-        
-         <FormField
-            control={form.control}
-            name="budgetType"
-            render={({ field }) => (
-                <FormItem className="space-y-3">
-                <FormLabel>Tipo de Orçamento</FormLabel>
-                <FormControl>
-                    <RadioGroup
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    className="flex flex-col space-y-1"
-                    >
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                        <RadioGroupItem value="daily" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                        Por Diária
-                        </FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                        <RadioGroupItem value="task" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                        Por Tarefa (Valor Fechado)
-                        </FormLabel>
-                    </FormItem>
-                    </RadioGroup>
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
 
         <FormField
           control={form.control}
