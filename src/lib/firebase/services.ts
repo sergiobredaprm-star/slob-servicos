@@ -5,18 +5,29 @@ import { Budget, Payment } from '@/lib/types';
 
 function convertDatesToTimestamps(data: any): any {
     const dataToSave = { ...data };
-    if (dataToSave.period?.from && dataToSave.period.from instanceof Date) {
+
+    // Safely convert dates, only if they exist and are Date objects
+    if (dataToSave.period?.from instanceof Date) {
         dataToSave.period.from = Timestamp.fromDate(dataToSave.period.from);
     }
-    if (dataToSave.period?.to && dataToSave.period.to instanceof Date) {
+    if (dataToSave.period?.to instanceof Date) {
         dataToSave.period.to = Timestamp.fromDate(dataToSave.period.to);
     }
-    if (dataToSave.deadline && dataToSave.deadline instanceof Date) {
+    if (dataToSave.deadline instanceof Date) {
         dataToSave.deadline = Timestamp.fromDate(dataToSave.deadline);
     }
-    if (dataToSave.registrationDate && dataToSave.registrationDate instanceof Date) {
+    if (dataToSave.registrationDate instanceof Date) {
         dataToSave.registrationDate = Timestamp.fromDate(dataToSave.registrationDate);
     }
+
+    // Ensure electricalItems and hydraulicItems are arrays, even if empty
+    if (!Array.isArray(dataToSave.electricalItems)) {
+        dataToSave.electricalItems = [];
+    }
+    if (!Array.isArray(dataToSave.hydraulicItems)) {
+        dataToSave.hydraulicItems = [];
+    }
+    
     return dataToSave;
 }
 
