@@ -33,6 +33,12 @@ import { Loader2, Trash2, PlusCircle } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 const settingsSchema = z.object({
   startTime: z.string(),
@@ -507,155 +513,168 @@ export default function SettingsPage() {
             </Card>
         </TabsContent>
         <TabsContent value="service-items" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Itens de Serviço de Elétrica</CardTitle>
-                <CardDescription>
-                  Crie uma lista de serviços de elétrica pré-cadastrados para agilizar a criação de orçamentos.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...electricalItemsForm}>
-                  <form onSubmit={electricalItemsForm.handleSubmit(onElectricalItemsSubmit)} className="space-y-6">
-                    {isLoadingElectricalItems ? (
-                      <div className="flex justify-center items-center h-24">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {electricalFields.map((field, index) => (
-                          <div key={field.id} className="flex items-end gap-4">
-                            <FormField
-                              control={electricalItemsForm.control}
-                              name={`items.${index}.name`}
-                              render={({ field }) => (
-                                <FormItem className="flex-grow">
-                                  <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Ex: Instalação de ponto de tomada" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={electricalItemsForm.control}
-                              name={`items.${index}.defaultValue`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className={cn(index > 0 && 'sr-only')}>Valor Padrão (R$)</FormLabel>
-                                  <FormControl>
-                                    <Input type="number" placeholder="50.00" {...field} className="w-36" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => handleRemoveElectricalItem(index, field.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => electricalAppend({ name: '', defaultValue: 0 })}
-                        >
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Adicionar Novo Item
-                        </Button>
-                      </div>
-                    )}
+            <Accordion type="single" collapsible defaultValue="electrical" className="w-full">
+              <AccordionItem value="electrical">
+                <Card>
+                  <AccordionTrigger className="p-6">
+                    <CardHeader className="p-0 text-left">
+                      <CardTitle>Itens de Serviço de Elétrica</CardTitle>
+                      <CardDescription>
+                        Crie uma lista de serviços de elétrica pré-cadastrados para agilizar a criação de orçamentos.
+                      </CardDescription>
+                    </CardHeader>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <CardContent>
+                      <Form {...electricalItemsForm}>
+                        <form onSubmit={electricalItemsForm.handleSubmit(onElectricalItemsSubmit)} className="space-y-6">
+                          {isLoadingElectricalItems ? (
+                            <div className="flex justify-center items-center h-24">
+                              <Loader2 className="h-6 w-6 animate-spin" />
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {electricalFields.map((field, index) => (
+                                <div key={field.id} className="flex items-end gap-4">
+                                  <FormField
+                                    control={electricalItemsForm.control}
+                                    name={`items.${index}.name`}
+                                    render={({ field }) => (
+                                      <FormItem className="flex-grow">
+                                        <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item</FormLabel>
+                                        <FormControl>
+                                          <Input placeholder="Ex: Instalação de ponto de tomada" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={electricalItemsForm.control}
+                                    name={`items.${index}.defaultValue`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className={cn(index > 0 && 'sr-only')}>Valor Padrão (R$)</FormLabel>
+                                        <FormControl>
+                                          <Input type="number" placeholder="50.00" {...field} className="w-36" />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="icon"
+                                    onClick={() => handleRemoveElectricalItem(index, field.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => electricalAppend({ name: '', defaultValue: 0 })}
+                              >
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Adicionar Novo Item
+                              </Button>
+                            </div>
+                          )}
 
-                    <Button type="submit" disabled={isElectricalSubmitPending || isLoadingElectricalItems}>
-                      {isElectricalSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Salvar Itens de Elétrica
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Itens de Serviço de Hidráulica</CardTitle>
-                <CardDescription>
-                  Crie uma lista de serviços de hidráulica pré-cadastrados para agilizar a criação de orçamentos.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...hydraulicItemsForm}>
-                  <form onSubmit={hydraulicItemsForm.handleSubmit(onHydraulicItemsSubmit)} className="space-y-6">
-                    {isLoadingHydraulicItems ? (
-                      <div className="flex justify-center items-center h-24">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {hydraulicFields.map((field, index) => (
-                          <div key={field.id} className="flex items-end gap-4">
-                            <FormField
-                              control={hydraulicItemsForm.control}
-                              name={`items.${index}.name`}
-                              render={({ field }) => (
-                                <FormItem className="flex-grow">
-                                  <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Ex: Instalação de ponto de água" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={hydraulicItemsForm.control}
-                              name={`items.${index}.defaultValue`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className={cn(index > 0 && 'sr-only')}>Valor Padrão (R$)</FormLabel>
-                                  <FormControl>
-                                    <Input type="number" placeholder="70.00" {...field} className="w-36" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => handleRemoveHydraulicItem(index, field.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => hydraulicAppend({ name: '', defaultValue: 0 })}
-                        >
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Adicionar Novo Item
-                        </Button>
-                      </div>
-                    )}
+                          <Button type="submit" disabled={isElectricalSubmitPending || isLoadingElectricalItems}>
+                            {isElectricalSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Salvar Itens de Elétrica
+                          </Button>
+                        </form>
+                      </Form>
+                    </CardContent>
+                  </AccordionContent>
+                </Card>
+              </AccordionItem>
+              <AccordionItem value="hydraulic">
+                <Card>
+                  <AccordionTrigger className="p-6">
+                    <CardHeader className="p-0 text-left">
+                      <CardTitle>Itens de Serviço de Hidráulica</CardTitle>
+                      <CardDescription>
+                        Crie uma lista de serviços de hidráulica pré-cadastrados para agilizar a criação de orçamentos.
+                      </CardDescription>
+                    </CardHeader>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <CardContent>
+                      <Form {...hydraulicItemsForm}>
+                        <form onSubmit={hydraulicItemsForm.handleSubmit(onHydraulicItemsSubmit)} className="space-y-6">
+                          {isLoadingHydraulicItems ? (
+                            <div className="flex justify-center items-center h-24">
+                              <Loader2 className="h-6 w-6 animate-spin" />
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {hydraulicFields.map((field, index) => (
+                                <div key={field.id} className="flex items-end gap-4">
+                                  <FormField
+                                    control={hydraulicItemsForm.control}
+                                    name={`items.${index}.name`}
+                                    render={({ field }) => (
+                                      <FormItem className="flex-grow">
+                                        <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item</FormLabel>
+                                        <FormControl>
+                                          <Input placeholder="Ex: Instalação de ponto de água" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={hydraulicItemsForm.control}
+                                    name={`items.${index}.defaultValue`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className={cn(index > 0 && 'sr-only')}>Valor Padrão (R$)</FormLabel>
+                                        <FormControl>
+                                          <Input type="number" placeholder="70.00" {...field} className="w-36" />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="icon"
+                                    onClick={() => handleRemoveHydraulicItem(index, field.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => hydraulicAppend({ name: '', defaultValue: 0 })}
+                              >
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Adicionar Novo Item
+                              </Button>
+                            </div>
+                          )}
 
-                    <Button type="submit" disabled={isHydraulicSubmitPending || isLoadingHydraulicItems}>
-                      {isHydraulicSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Salvar Itens de Hidráulica
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
+                          <Button type="submit" disabled={isHydraulicSubmitPending || isLoadingHydraulicItems}>
+                            {isHydraulicSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Salvar Itens de Hidráulica
+                          </Button>
+                        </form>
+                      </Form>
+                    </CardContent>
+                  </AccordionContent>
+                </Card>
+              </AccordionItem>
+            </Accordion>
         </TabsContent>
         <TabsContent value="daily-rate">
           <Card>
