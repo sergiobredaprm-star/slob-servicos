@@ -54,12 +54,12 @@ service firebase.storage {
      */
     match /profile-images/{userId}/{fileName} {
       allow read: if true;
-      allow write: if isOwner(userId) && isFileSizeOk(5 * 1024 * 1024);
+      allow write: if request.auth != null && request.auth.uid == userId && request.resource.size < 5 * 1024 * 1024;
     }
   }
 }
 
-// Helper Functions
+// Helper Functions (Firestore ONLY)
 
 function isSignedIn() {
   return request.auth != null;
@@ -67,8 +67,4 @@ function isSignedIn() {
 
 function isOwner(userId) {
   return isSignedIn() && request.auth.uid == userId;
-}
-
-function isFileSizeOk(maxSizeInBytes) {
-  return request.resource.size < maxSizeInBytes;
 }
