@@ -12,6 +12,11 @@ export type Payment = {
   notes?: string;
 };
 
+export type ElectricalItem = {
+  name: string;
+  value: number;
+};
+
 export type Budget = {
   id:string;
   clientId: string;
@@ -37,6 +42,7 @@ export type Budget = {
   wallHeight?: number;
   sqMetersPrice?: number;
   paintCoats?: number;
+  electricalItems?: ElectricalItem[];
 };
 
 export type DailyRateSettings = {

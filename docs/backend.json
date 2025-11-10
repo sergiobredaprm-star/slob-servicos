@@ -70,6 +70,22 @@
       },
       "required": ["id", "amount", "date"]
     },
+    "ElectricalItem": {
+      "title": "Electrical Item",
+      "type": "object",
+      "description": "Represents a single item in an electrical budget.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Description of the electrical item."
+        },
+        "value": {
+          "type": "number",
+          "description": "Cost of the electrical item."
+        }
+      },
+      "required": ["name", "value"]
+    },
     "Budget": {
       "title": "Budget",
       "type": "object",
@@ -158,6 +174,13 @@
         "paintCoats": {
             "type": "number",
             "description": "Number of paint coats required, for painting services."
+        },
+        "electricalItems": {
+          "type": "array",
+          "description": "A list of items for an electrical budget.",
+          "items": {
+            "$ref": "#/entities/ElectricalItem"
+          }
         }
       },
       "required": [

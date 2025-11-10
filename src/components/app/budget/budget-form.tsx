@@ -1,6 +1,6 @@
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,7 +34,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Sparkles, Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { CalendarIcon, Sparkles, Loader2, Check, ChevronsUpDown, Trash2, PlusCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -44,7 +44,7 @@ import { getTaskSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Budget, Client, ServiceType } from '@/lib/types';
+import { Budget, Client, ServiceType, ElectricalItem } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { saveBudget } from '@/lib/firebase/services';
@@ -58,6 +58,11 @@ import {
 import { collection, query } from 'firebase/firestore';
 
 const serviceTypes: ServiceType[] = ['Pintura', 'Elétrica', 'Hidráulica', 'Alvenaria', 'Outro'];
+
+const electricalItemSchema = z.object({
+  name: z.string().min(1, 'A descrição do item é obrigatória.'),
+  value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
+});
 
 const formSchema = z.object({
   clientId: z.string().min(1, {
@@ -90,6 +95,7 @@ const formSchema = z.object({
   wallHeight: z.coerce.number().optional(),
   sqMetersPrice: z.coerce.number().optional(),
   paintCoats: z.coerce.number().optional(),
+  electricalItems: z.array(electricalItemSchema).optional(),
 }).refine(data => {
   if (data.budgetType === 'daily') {
     return !!data.period && !!data.dailyRate && data.dailyRate > 0 && !!data.period.from && !!data.period.to && data.period.from < data.period.to;
@@ -99,7 +105,7 @@ const formSchema = z.object({
   message: 'Para orçamento por diária, o período e o valor da diária são obrigatórios.',
   path: ['budgetType'],
 }).refine(data => {
-    if (data.budgetType === 'task' && data.serviceType !== 'Pintura') {
+    if (data.budgetType === 'task' && data.serviceType !== 'Pintura' && data.serviceType !== 'Elétrica') {
         return !!data.total && data.total > 0;
     }
     return true;
@@ -146,6 +152,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       },
       deadline: initialData.deadline as Date | undefined,
       clientId: initialData.clientId || '',
+      electricalItems: initialData.electricalItems || [{ name: '', value: 0 }],
     } : {
       clientId: '',
       clientName: '',
@@ -166,7 +173,13 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       wallWidth: 0,
       sqMetersPrice: 0,
       paintCoats: 2,
+      electricalItems: [{ name: '', value: 0 }],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'electricalItems',
   });
 
    useEffect(() => {
@@ -192,6 +205,8 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   const paintCoats = form.watch('paintCoats') || 0;
   const totalArea = wallWidth * wallHeight;
 
+  const electricalItems = form.watch('electricalItems');
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!user || !firestore) {
       toast({
@@ -210,6 +225,8 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       } else if (values.budgetType === 'task') {
         if (values.serviceType === 'Pintura' && values.wallWidth && values.wallHeight && values.sqMetersPrice && values.paintCoats) {
           finalTotal = values.wallWidth * values.wallHeight * values.sqMetersPrice * values.paintCoats;
+        } else if (values.serviceType === 'Elétrica' && values.electricalItems) {
+            finalTotal = values.electricalItems.reduce((acc, item) => acc + item.value, 0);
         } else if (values.total) {
           finalTotal = values.total;
         }
@@ -219,25 +236,13 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       const profit = finalTotal - materialCost;
 
       const budgetData: Omit<Budget, 'id'> = {
-        clientId: values.clientId,
-        clientName: values.clientName,
-        clientDescription: values.clientDescription,
+        ...values,
         serviceType: values.serviceType as ServiceType,
-        task: values.task,
-        budgetType: values.budgetType,
-        dailyRate: values.dailyRate,
-        period: values.period,
-        deadline: values.deadline,
-        registrationDate: values.registrationDate,
         total: finalTotal,
         materialCost: materialCost,
         profit: profit,
-        status: values.status,
         userId: user.uid,
-        wallHeight: values.wallHeight,
-        wallWidth: values.wallWidth,
-        sqMetersPrice: values.sqMetersPrice,
-        paintCoats: values.paintCoats,
+        electricalItems: values.serviceType === 'Elétrica' ? values.electricalItems : [],
       };
 
       try {
@@ -294,6 +299,8 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   } else if (budgetType === 'task') {
     if (serviceType === 'Pintura') {
       total = wallWidth * wallHeight * sqMetersPrice * paintCoats;
+    } else if (serviceType === 'Elétrica') {
+        total = electricalItems?.reduce((acc, item) => acc + (item.value || 0), 0) || 0;
     } else {
       total = taskTotal;
     }
@@ -767,7 +774,65 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
            </Card>
         )}
 
-        {budgetType === 'task' && serviceType !== 'Pintura' && (
+        {budgetType === 'task' && serviceType === 'Elétrica' && (
+          <Card className="bg-muted/50 p-6">
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-lg">Itens do Serviço de Elétrica</CardTitle>
+            </CardHeader>
+            <div className="space-y-4">
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex items-end gap-4">
+                  <FormField
+                    control={form.control}
+                    name={`electricalItems.${index}.name`}
+                    render={({ field }) => (
+                      <FormItem className="flex-grow">
+                        <FormLabel>Item {index + 1}</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Instalação de tomada" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`electricalItems.${index}.value`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor (R$)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="50.00" {...field} />
+                        </FormControl>
+                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => remove(index)}
+                    disabled={fields.length <= 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => append({ name: '', value: 0 })}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar Item
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {budgetType === 'task' && serviceType !== 'Pintura' && serviceType !== 'Elétrica' && (
             <FormField
             control={form.control}
             name="total"
