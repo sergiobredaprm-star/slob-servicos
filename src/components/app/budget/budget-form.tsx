@@ -340,6 +340,23 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         
         <FormField
           control={form.control}
+          name="clientDescription"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Descrição do Cliente</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Descreva o cliente e suas necessidades..."
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="serviceType"
           render={({ field }) => (
             <FormItem>
@@ -356,23 +373,6 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="clientDescription"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Descrição do Cliente</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Descreva o cliente e suas necessidades..."
-                  {...field}
-                />
-              </FormControl>
               <FormMessage />
             </FormItem>
           )}
