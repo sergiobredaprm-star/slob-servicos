@@ -427,6 +427,179 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
             </FormItem>
           )}
         />
+        
+        {budgetType === 'task' && serviceType === 'Pintura' && (
+           <Card className="bg-muted/50 p-6">
+             <CardHeader className="p-0 pb-4">
+                <CardTitle className="text-lg">Cálculo de Pintura</CardTitle>
+            </CardHeader>
+             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <FormField
+                  control={form.control}
+                  name="wallHeight"
+                  render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Altura (m)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="2.7" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="wallWidth"
+                  render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Largura (m)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="10" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                  )}
+                />
+                <div className="space-y-2">
+                    <FormLabel>Área Total (m²)</FormLabel>
+                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
+                        {totalArea.toFixed(2)} m²
+                    </div>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="sqMetersPrice"
+                  render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor/m² (R$)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="25" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="paintCoats"
+                  render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nº de Demãos</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="2" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                  )}
+                />
+             </div>
+           </Card>
+        )}
+
+        {budgetType === 'task' && serviceType === 'Elétrica' && (
+          <Card className="bg-muted/50 p-6">
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-lg">Itens do Serviço de Elétrica</CardTitle>
+            </CardHeader>
+            <div className="space-y-4">
+              {fields.map((field, index) => {
+                const item = electricalItems?.[index];
+                const quantity = item?.quantity || 0;
+                const value = item?.value || 0;
+                const itemTotal = quantity * value;
+
+                return (
+                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-end gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`electricalItems.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Item</FormLabel>
+                             <Select
+                              onValueChange={(value) => {
+                                const selectedItem = electricalServiceItems?.find(item => item.name === value);
+                                if (selectedItem) {
+                                  update(index, { 
+                                    name: selectedItem.name, 
+                                    value: selectedItem.defaultValue,
+                                    quantity: 1,
+                                  });
+                                }
+                              }}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={isLoadingElectricalItems ? "Carregando..." : "Selecione um item ou digite"} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {electricalServiceItems?.map(item => (
+                                  <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`electricalItems.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Qtd.</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="1" {...field} className="w-20" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`electricalItems.${index}.value`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Valor Unit. (R$)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="50.00" {...field} className="w-28" />
+                            </FormControl>
+                             <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <div className="space-y-2">
+                        <FormLabel className={cn(index > 0 && "sr-only")}>Valor Total (R$)</FormLabel>
+                        <div className="flex h-10 w-28 items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
+                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(itemTotal)}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        disabled={fields.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                )
+              })}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => append({ name: '', quantity: 1, value: 0 })}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar Item
+              </Button>
+            </div>
+          </Card>
+        )}
 
         <FormField
           control={form.control}
@@ -712,179 +885,6 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
               )}
               />
           </div>
-        )}
-        
-        {budgetType === 'task' && serviceType === 'Pintura' && (
-           <Card className="bg-muted/50 p-6">
-             <CardHeader className="p-0 pb-4">
-                <CardTitle className="text-lg">Cálculo de Pintura</CardTitle>
-            </CardHeader>
-             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <FormField
-                  control={form.control}
-                  name="wallHeight"
-                  render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Altura (m)</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="2.7" {...field} value={field.value || ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="wallWidth"
-                  render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Largura (m)</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="10" {...field} value={field.value || ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                  )}
-                />
-                <div className="space-y-2">
-                    <FormLabel>Área Total (m²)</FormLabel>
-                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
-                        {totalArea.toFixed(2)} m²
-                    </div>
-                </div>
-                <FormField
-                  control={form.control}
-                  name="sqMetersPrice"
-                  render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor/m² (R$)</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="25" {...field} value={field.value || ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="paintCoats"
-                  render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nº de Demãos</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="2" {...field} value={field.value || ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                  )}
-                />
-             </div>
-           </Card>
-        )}
-
-        {budgetType === 'task' && serviceType === 'Elétrica' && (
-          <Card className="bg-muted/50 p-6">
-            <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-lg">Itens do Serviço de Elétrica</CardTitle>
-            </CardHeader>
-            <div className="space-y-4">
-              {fields.map((field, index) => {
-                const item = electricalItems?.[index];
-                const quantity = item?.quantity || 0;
-                const value = item?.value || 0;
-                const itemTotal = quantity * value;
-
-                return (
-                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-end gap-4">
-                      <FormField
-                        control={form.control}
-                        name={`electricalItems.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={cn(index > 0 && "sr-only")}>Item</FormLabel>
-                             <Select
-                              onValueChange={(value) => {
-                                const selectedItem = electricalServiceItems?.find(item => item.name === value);
-                                if (selectedItem) {
-                                  update(index, { 
-                                    name: selectedItem.name, 
-                                    value: selectedItem.defaultValue,
-                                    quantity: 1,
-                                  });
-                                }
-                              }}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder={isLoadingElectricalItems ? "Carregando..." : "Selecione um item ou digite"} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {electricalServiceItems?.map(item => (
-                                  <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`electricalItems.${index}.quantity`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={cn(index > 0 && "sr-only")}>Qtd.</FormLabel>
-                            <FormControl>
-                              <Input type="number" placeholder="1" {...field} className="w-20" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`electricalItems.${index}.value`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={cn(index > 0 && "sr-only")}>Valor Unit. (R$)</FormLabel>
-                            <FormControl>
-                              <Input type="number" placeholder="50.00" {...field} className="w-28" />
-                            </FormControl>
-                             <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                       <div className="space-y-2">
-                        <FormLabel className={cn(index > 0 && "sr-only")}>Valor Total (R$)</FormLabel>
-                        <div className="flex h-10 w-28 items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
-                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(itemTotal)}
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => remove(index)}
-                        disabled={fields.length <= 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                )
-              })}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => append({ name: '', quantity: 1, value: 0 })}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar Item
-              </Button>
-            </div>
-          </Card>
         )}
 
         {budgetType === 'task' && serviceType !== 'Pintura' && serviceType !== 'Elétrica' && (
