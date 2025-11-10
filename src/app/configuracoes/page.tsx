@@ -480,6 +480,7 @@ export default function SettingsPage() {
                                     if (file) {
                                       field.onChange(file);
                                       setPreviewImage(URL.createObjectURL(file));
+                                      setSelectedGalleryImage(null); // Deseleciona da galeria ao fazer novo upload
                                     }
                                   }}
                                 />
@@ -530,7 +531,7 @@ export default function SettingsPage() {
                                 key={url}
                                 className={cn(
                                   "rounded-lg overflow-hidden border-2 aspect-square relative focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                                  previewImage === url && selectedGalleryImage === url ? 'border-primary' : 'border-transparent'
+                                  selectedGalleryImage === url ? 'border-primary' : 'border-transparent'
                                 )}
                                 onClick={() => handleSelectGalleryImage(url)}
                               >
