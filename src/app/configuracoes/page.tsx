@@ -29,7 +29,7 @@ import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { getCompanyProfile, saveCompanyProfile } from '@/lib/firebase/company-services';
 import { saveElectricalItem, deleteElectricalItem } from '@/lib/firebase/electrical-item-services';
 import { saveHydraulicItem, deleteHydraulicItem } from '@/lib/firebase/hydraulic-item-services';
-import { Loader2, Trash2, PlusCircle, Upload } from 'lucide-react';
+import { Loader2, Trash2, PlusCircle, Upload, Save } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
@@ -102,6 +102,8 @@ export default function SettingsPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [isGalleryLoading, setIsGalleryLoading] = useState(true);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
+  const [isSavingImage, startImageSaveTransition] = useTransition();
 
 
   const settingsForm = useForm<z.infer<typeof settingsSchema>>({
@@ -294,28 +296,36 @@ export default function SettingsPage() {
     });
   }
 
-  async function handleSelectGalleryImage(imageUrl: string) {
-    if (!auth?.currentUser || !user?.displayName) {
-      toast({ variant: "destructive", title: "Erro", description: "Usuário não autenticado." });
+  function handleSelectGalleryImage(imageUrl: string) {
+    setSelectedGalleryImage(imageUrl);
+    setPreviewImage(imageUrl);
+  }
+
+  const handleSaveSelectedImage = () => {
+    if (!selectedGalleryImage || !auth?.currentUser || !user?.displayName) {
+      toast({ variant: "destructive", title: "Erro", description: "Nenhuma imagem selecionada ou usuário não autenticado." });
       return;
     }
     
-    setPreviewImage(imageUrl);
-    try {
-        await handleProfileUpdate(user.displayName, imageUrl);
-        toast({
-            title: "Foto de Perfil Atualizada!",
-            description: "Sua foto foi alterada com sucesso.",
-        });
-    } catch(error: any) {
-        toast({
-            variant: "destructive",
-            title: "Erro ao Atualizar Foto",
-            description: error.message || "Não foi possível selecionar esta imagem.",
-        });
-        setPreviewImage(user.photoURL || null); // Revert on error
-    }
-}
+    startImageSaveTransition(async () => {
+        try {
+            await handleProfileUpdate(user.displayName!, selectedGalleryImage);
+            toast({
+                title: "Foto de Perfil Atualizada!",
+                description: "Sua foto foi alterada com sucesso.",
+            });
+            setSelectedGalleryImage(null); // Reset selection
+        } catch(error: any) {
+            toast({
+                variant: "destructive",
+                title: "Erro ao Atualizar Foto",
+                description: error.message || "Não foi possível salvar esta imagem.",
+            });
+            setPreviewImage(user.photoURL || null); // Revert preview on error
+        }
+    });
+  }
+
 
   function onElectricalItemsSubmit(values: ElectricalItemsFormData) {
     if (!user || !firestore) {
@@ -489,7 +499,25 @@ export default function SettingsPage() {
                     />
                      <div className="space-y-4">
                         <Separator />
-                        <h3 className="text-sm font-medium text-muted-foreground">Sua Galeria</h3>
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-sm font-medium text-muted-foreground">Sua Galeria</h3>
+                           {selectedGalleryImage && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleSaveSelectedImage}
+                              disabled={isSavingImage}
+                            >
+                              {isSavingImage ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="mr-2 h-4 w-4" />
+                              )}
+                              Salvar Imagem
+                            </Button>
+                          )}
+                        </div>
+
                         {isGalleryLoading ? (
                           <div className="flex justify-center items-center h-24">
                               <Loader2 className="h-6 w-6 animate-spin" />
@@ -502,7 +530,7 @@ export default function SettingsPage() {
                                 key={url}
                                 className={cn(
                                   "rounded-lg overflow-hidden border-2 aspect-square relative focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                                  previewImage === url ? 'border-primary' : 'border-transparent'
+                                  previewImage === url && selectedGalleryImage === url ? 'border-primary' : 'border-transparent'
                                 )}
                                 onClick={() => handleSelectGalleryImage(url)}
                               >
@@ -876,5 +904,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
