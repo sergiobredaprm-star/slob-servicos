@@ -190,6 +190,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   const wallHeight = form.watch('wallHeight') || 0;
   const sqMetersPrice = form.watch('sqMetersPrice') || 0;
   const paintCoats = form.watch('paintCoats') || 0;
+  const totalArea = wallWidth * wallHeight;
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!user || !firestore) {
@@ -703,7 +704,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
              <CardHeader className="p-0 pb-4">
                 <CardTitle className="text-lg">Cálculo de Pintura</CardTitle>
             </CardHeader>
-             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <FormField
                   control={form.control}
                   name="wallHeight"
@@ -730,6 +731,12 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                       </FormItem>
                   )}
                 />
+                <div className="space-y-2">
+                    <FormLabel>Área Total (m²)</FormLabel>
+                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
+                        {totalArea.toFixed(2)} m²
+                    </div>
+                </div>
                 <FormField
                   control={form.control}
                   name="sqMetersPrice"
