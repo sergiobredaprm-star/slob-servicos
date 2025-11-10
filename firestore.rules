@@ -1,31 +1,8 @@
-/**
- * @fileoverview Firestore and Storage Security Rules for the application.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Users can only
- * access data and files that they explicitly own. Schema validation is relaxed
- * for rapid prototyping, focusing instead on authorization.
- *
- * Data Structure (Firestore):
- * - /users/{userId}: User profiles.
- * - /users/{userId}/...: All user-specific sub-collections.
- *
- * File Structure (Storage):
- * - /profile-images/{userId}/{fileName}: User profile pictures.
- *
- * Key Security Decisions:
- * - Users can only access/modify their own data and files.
- * - Profile images can be publicly read (as they are used in the UI).
- * - Writes to profile image paths are restricted to the owner and have a size limit.
- * - No global admin roles are defined in this ruleset.
- *
- * Force rule re-deployment.
- */
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
     /**
      * @description Rules for user profiles.  Users can read and write their own profile data.
      * @path /users/{userId}
@@ -68,6 +45,3 @@ function isSignedIn() {
 function isOwner(userId) {
   return isSignedIn() && request.auth.uid == userId;
 }
-
-
-    
