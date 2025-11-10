@@ -85,6 +85,9 @@ const hydraulicItemsFormSchema = z.object({
   items: z.array(hydraulicItemSchema),
 });
 
+type ElectricalItemsFormData = z.infer<typeof electricalItemsFormSchema>;
+type HydraulicItemsFormData = z.infer<typeof hydraulicItemsFormSchema>;
+
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -129,7 +132,7 @@ export default function SettingsPage() {
   
   const { data: electricalItems, isLoading: isLoadingElectricalItems } = useCollection<ElectricalServiceItem>(electricalItemsQuery);
 
-  const electricalItemsForm = useForm<z.infer<typeof electricalItemsFormSchema>>({
+  const electricalItemsForm = useForm<ElectricalItemsFormData>({
     resolver: zodResolver(electricalItemsFormSchema),
     defaultValues: {
       items: [],
@@ -154,7 +157,7 @@ export default function SettingsPage() {
 
   const { data: hydraulicItems, isLoading: isLoadingHydraulicItems } = useCollection<HydraulicServiceItem>(hydraulicItemsQuery);
   
-  const hydraulicItemsForm = useForm<z.infer<typeof hydraulicItemsFormSchema>>({
+  const hydraulicItemsForm = useForm<HydraulicItemsFormData>({
     resolver: zodResolver(hydraulicItemsFormSchema),
     defaultValues: {
       items: [],
@@ -263,13 +266,13 @@ export default function SettingsPage() {
         toast({
           variant: 'destructive',
           title: 'Erro ao Atualizar Perfil',
-          description: error.message || 'Não foi possível salvar seu perfil.',
+          description: 'A URL de fotos do Google Fotos não é um link direto para a imagem, por favor, use um serviço de hospedagem de imagem ou o upload de arquivo.',
         });
       }
     });
   }
 
-  function onElectricalItemsSubmit(values: z.infer<typeof electricalItemsFormSchema>>) {
+  function onElectricalItemsSubmit(values: ElectricalItemsFormData) {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
       return;
@@ -316,7 +319,7 @@ export default function SettingsPage() {
     electricalRemove(index);
   }
 
-  function onHydraulicItemsSubmit(values: z.infer<typeof hydraulicItemsFormSchema>>) {
+  function onHydraulicItemsSubmit(values: HydraulicItemsFormData) {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
       return;
