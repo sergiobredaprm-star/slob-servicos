@@ -266,7 +266,7 @@ export default function SettingsPage() {
         toast({
           variant: 'destructive',
           title: 'Erro ao Atualizar Perfil',
-          description: 'A URL de fotos do Google Fotos não é um link direto para a imagem, por favor, use um serviço de hospedagem de imagem ou o upload de arquivo.',
+          description: 'Não foi possível salvar o perfil. Verifique as regras de segurança do Storage.',
         });
       }
     });
