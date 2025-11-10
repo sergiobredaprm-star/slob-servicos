@@ -40,8 +40,9 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import Image from 'next/image';
-import { uploadProfileImage } from '@/lib/firebase/storage-service';
+import { uploadProfileImage, listProfileImages } from '@/lib/firebase/storage-service';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 
 
 const settingsSchema = z.object({
@@ -99,6 +100,8 @@ export default function SettingsPage() {
   const [isHydraulicSubmitPending, startHydraulicSubmitTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [isGalleryLoading, setIsGalleryLoading] = useState(true);
 
 
   const settingsForm = useForm<z.infer<typeof settingsSchema>>({
@@ -196,6 +199,22 @@ export default function SettingsPage() {
   }, [user, firestore, companyForm]);
 
   useEffect(() => {
+    async function fetchGalleryImages() {
+      if (user && firebaseApp) {
+        setIsGalleryLoading(true);
+        const images = await listProfileImages(firebaseApp, user.uid);
+        setGalleryImages(images);
+        setIsGalleryLoading(false);
+      }
+    }
+
+    if (user && firebaseApp) {
+      fetchGalleryImages();
+    }
+  }, [user, firebaseApp]);
+
+
+  useEffect(() => {
     if (user) {
       userProfileForm.reset({
         displayName: user.displayName || '',
@@ -234,6 +253,14 @@ export default function SettingsPage() {
       }
     });
   }
+
+  async function handleProfileUpdate(displayName: string, photoURL: string) {
+    if (!auth?.currentUser) return;
+    await updateProfile(auth.currentUser, { displayName, photoURL });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event('auth-change'));
+    }
+  }
   
    function onUserProfileSubmit(values: z.infer<typeof userProfileSchema>) {
     if (!auth?.currentUser || !firebaseApp) {
@@ -246,31 +273,49 @@ export default function SettingsPage() {
         
         if (values.photoFile) {
           photoURL = await uploadProfileImage(firebaseApp, auth.currentUser.uid, values.photoFile);
+          // Add new image to the top of the gallery
+          setGalleryImages(prev => [photoURL, ...prev]);
         }
 
-        await updateProfile(auth.currentUser, {
-          displayName: values.displayName,
-          photoURL: photoURL,
-        });
+        await handleProfileUpdate(values.displayName, photoURL);
 
         toast({
           title: 'Perfil Atualizado!',
           description: 'Suas informações de perfil foram salvas.',
         });
         
-        // Forçar a atualização do estado do usuário no provider
-        if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event('auth-change'));
-        }
       } catch (error: any) {
         toast({
           variant: 'destructive',
           title: 'Erro ao Atualizar Perfil',
-          description: 'Não foi possível salvar o perfil. Verifique as regras de segurança do Storage.',
+          description: error.message || 'Não foi possível salvar o perfil. Verifique as regras de segurança do Storage.',
         });
       }
     });
   }
+
+  async function handleSelectGalleryImage(imageUrl: string) {
+    if (!auth?.currentUser || !user?.displayName) {
+      toast({ variant: "destructive", title: "Erro", description: "Usuário não autenticado." });
+      return;
+    }
+    
+    setPreviewImage(imageUrl);
+    try {
+        await handleProfileUpdate(user.displayName, imageUrl);
+        toast({
+            title: "Foto de Perfil Atualizada!",
+            description: "Sua foto foi alterada com sucesso.",
+        });
+    } catch(error: any) {
+        toast({
+            variant: "destructive",
+            title: "Erro ao Atualizar Foto",
+            description: error.message || "Não foi possível selecionar esta imagem.",
+        });
+        setPreviewImage(user.photoURL || null); // Revert on error
+    }
+}
 
   function onElectricalItemsSubmit(values: ElectricalItemsFormData) {
     if (!user || !firestore) {
@@ -442,6 +487,39 @@ export default function SettingsPage() {
                         </FormItem>
                       )}
                     />
+                     <div className="space-y-4">
+                        <Separator />
+                        <h3 className="text-sm font-medium text-muted-foreground">Sua Galeria</h3>
+                        {isGalleryLoading ? (
+                          <div className="flex justify-center items-center h-24">
+                              <Loader2 className="h-6 w-6 animate-spin" />
+                          </div>
+                        ) : galleryImages.length > 0 ? (
+                           <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                            {galleryImages.map((url) => (
+                              <button
+                                type="button"
+                                key={url}
+                                className={cn(
+                                  "rounded-lg overflow-hidden border-2 aspect-square relative focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                                  previewImage === url ? 'border-primary' : 'border-transparent'
+                                )}
+                                onClick={() => handleSelectGalleryImage(url)}
+                              >
+                                <Image
+                                  src={url}
+                                  alt="Imagem da galeria de perfil"
+                                  fill
+                                  sizes="(max-width: 768px) 20vw, 10vw"
+                                  className="object-cover"
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Sua galeria de imagens está vazia. Faça o upload de uma nova foto.</p>
+                        )}
+                      </div>
                     <Button type="submit" disabled={isUserSubmitPending}>
                       {isUserSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Salvar Perfil
