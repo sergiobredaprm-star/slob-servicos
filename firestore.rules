@@ -68,3 +68,6 @@ function isSignedIn() {
 function isOwner(userId) {
   return isSignedIn() && request.auth.uid == userId;
 }
+
+
+    
