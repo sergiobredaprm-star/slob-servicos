@@ -24,12 +24,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { settings } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { CompanyProfile, ElectricalServiceItem, HydraulicServiceItem } from '@/lib/types';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useRef } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { getCompanyProfile, saveCompanyProfile } from '@/lib/firebase/company-services';
 import { saveElectricalItem, deleteElectricalItem } from '@/lib/firebase/electrical-item-services';
 import { saveHydraulicItem, deleteHydraulicItem } from '@/lib/firebase/hydraulic-item-services';
-import { Loader2, Trash2, PlusCircle } from 'lucide-react';
+import { Loader2, Trash2, PlusCircle, Upload } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
@@ -39,6 +39,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import Image from 'next/image';
+import { uploadProfileImage } from '@/lib/firebase/storage-service';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 
 const settingsSchema = z.object({
   startTime: z.string(),
@@ -58,7 +62,7 @@ const companyProfileSchema = z.object({
 
 const userProfileSchema = z.object({
   displayName: z.string().min(2, { message: 'O nome é obrigatório.' }),
-  photoURL: z.string().url({ message: 'Por favor, insira uma URL válida.' }).optional().or(z.literal('')),
+  photoFile: z.instanceof(File).optional(),
 });
 
 const electricalItemSchema = z.object({
@@ -84,12 +88,15 @@ const hydraulicItemsFormSchema = z.object({
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const { firestore, user, auth } = useFirebase();
+  const { firestore, user, auth, firebaseApp } = useFirebase();
   const [companyProfileId, setCompanyProfileId] = useState<string | undefined>(undefined);
   const [isSubmitPending, startSubmitTransition] = useTransition();
   const [isUserSubmitPending, startUserSubmitTransition] = useTransition();
   const [isElectricalSubmitPending, startElectricalSubmitTransition] = useTransition();
   const [isHydraulicSubmitPending, startHydraulicSubmitTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
+
 
   const settingsForm = useForm<z.infer<typeof settingsSchema>>({
     resolver: zodResolver(settingsSchema),
@@ -111,8 +118,7 @@ export default function SettingsPage() {
   const userProfileForm = useForm<z.infer<typeof userProfileSchema>>({
     resolver: zodResolver(userProfileSchema),
     defaultValues: {
-      displayName: '',
-      photoURL: '',
+      displayName: user?.displayName || '',
     },
   });
 
@@ -190,8 +196,8 @@ export default function SettingsPage() {
     if (user) {
       userProfileForm.reset({
         displayName: user.displayName || '',
-        photoURL: user.photoURL || '',
       });
+      setPreviewImage(user.photoURL || null);
     }
   }, [user, userProfileForm]);
 
@@ -227,35 +233,43 @@ export default function SettingsPage() {
   }
   
    function onUserProfileSubmit(values: z.infer<typeof userProfileSchema>) {
-    if (!auth?.currentUser) {
+    if (!auth?.currentUser || !firebaseApp) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
       return;
     }
     startUserSubmitTransition(async () => {
       try {
+        let photoURL = auth.currentUser?.photoURL || '';
+        
+        if (values.photoFile) {
+          photoURL = await uploadProfileImage(firebaseApp, auth.currentUser.uid, values.photoFile);
+        }
+
         await updateProfile(auth.currentUser, {
           displayName: values.displayName,
-          photoURL: values.photoURL,
+          photoURL: photoURL,
         });
+
         toast({
           title: 'Perfil Atualizado!',
           description: 'Suas informações de perfil foram salvas.',
         });
-         // Forçar a atualização do estado do usuário no provider (opcional, mas recomendado)
+        
+        // Forçar a atualização do estado do usuário no provider
         if (typeof window !== "undefined") {
             window.dispatchEvent(new Event('auth-change'));
         }
-      } catch (error) {
+      } catch (error: any) {
         toast({
           variant: 'destructive',
           title: 'Erro ao Atualizar Perfil',
-          description: 'Não foi possível salvar seu perfil.',
+          description: error.message || 'Não foi possível salvar seu perfil.',
         });
       }
     });
   }
 
-  function onElectricalItemsSubmit(values: z.infer<typeof electricalItemsFormSchema>) {
+  function onElectricalItemsSubmit(values: z.infer<typeof electricalItemsFormSchema>>) {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
       return;
@@ -302,7 +316,7 @@ export default function SettingsPage() {
     electricalRemove(index);
   }
 
-  function onHydraulicItemsSubmit(values: z.infer<typeof hydraulicItemsFormSchema>) {
+  function onHydraulicItemsSubmit(values: z.infer<typeof hydraulicItemsFormSchema>>) {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
       return;
@@ -387,15 +401,39 @@ export default function SettingsPage() {
                     />
                     <FormField
                       control={userProfileForm.control}
-                      name="photoURL"
+                      name="photoFile"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>URL da Foto do Perfil</FormLabel>
-                          <FormControl>
-                            <Input type="url" placeholder="https://exemplo.com/sua-foto.jpg" {...field} />
-                          </FormControl>
+                          <FormLabel>Foto do Perfil</FormLabel>
+                          <div className="flex items-center gap-4">
+                            <Avatar className="h-16 w-16">
+                               <AvatarImage src={previewImage ?? ''} alt="Pré-visualização do perfil" />
+                               <AvatarFallback>{user?.displayName ? user.displayName.substring(0,2) : user?.email?.substring(0,2).toUpperCase() ?? 'U'}</AvatarFallback>
+                            </Avatar>
+                            <FormControl>
+                              <>
+                                <Input 
+                                  type="file" 
+                                  accept="image/png, image/jpeg, image/gif"
+                                  className="hidden"
+                                  ref={fileInputRef}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      field.onChange(file);
+                                      setPreviewImage(URL.createObjectURL(file));
+                                    }
+                                  }}
+                                />
+                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                  <Upload className="mr-2 h-4 w-4" />
+                                  Trocar Foto
+                                </Button>
+                              </>
+                            </FormControl>
+                          </div>
                           <FormDescription>
-                            Cole o link direto para uma imagem (ex: .jpg, .png). Links do Google Fotos ou redes sociais podem não funcionar.
+                           Escolha uma imagem (JPG, PNG, GIF). A imagem será enviada para o Firebase Storage.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
