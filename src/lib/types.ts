@@ -33,6 +33,10 @@ export type Budget = {
   status: BudgetStatus;
   userId: string;
   paymentHistory?: Payment[];
+  wallWidth?: number;
+  wallHeight?: number;
+  sqMetersPrice?: number;
+  paintCoats?: number;
 };
 
 export type DailyRateSettings = {

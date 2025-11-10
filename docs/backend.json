@@ -142,6 +142,22 @@
           "items": {
             "$ref": "#/entities/Payment"
           }
+        },
+        "wallWidth": {
+            "type": "number",
+            "description": "Width of the wall in meters, for painting services."
+        },
+        "wallHeight": {
+            "type": "number",
+            "description": "Height of the wall in meters, for painting services."
+        },
+        "sqMetersPrice": {
+            "type": "number",
+            "description": "Price per square meter, for painting services."
+        },
+        "paintCoats": {
+            "type": "number",
+            "description": "Number of paint coats required, for painting services."
         }
       },
       "required": [

@@ -86,6 +86,10 @@ const formSchema = z.object({
   total: z.coerce.number().optional(),
   materialCost: z.coerce.number().optional(),
   status: z.enum(['prospecção', 'ativo', 'concluído', 'cancelado']),
+  wallWidth: z.coerce.number().optional(),
+  wallHeight: z.coerce.number().optional(),
+  sqMetersPrice: z.coerce.number().optional(),
+  paintCoats: z.coerce.number().optional(),
 }).refine(data => {
   if (data.budgetType === 'daily') {
     return !!data.period && !!data.dailyRate && data.dailyRate > 0 && !!data.period.from && !!data.period.to && data.period.from < data.period.to;
@@ -95,7 +99,7 @@ const formSchema = z.object({
   message: 'Para orçamento por diária, o período e o valor da diária são obrigatórios.',
   path: ['budgetType'],
 }).refine(data => {
-    if (data.budgetType === 'task') {
+    if (data.budgetType === 'task' && data.serviceType !== 'Pintura') {
         return !!data.total && data.total > 0;
     }
     return true;
@@ -158,6 +162,10 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       total: 0,
       materialCost: 0,
       status: 'prospecção',
+      wallHeight: 0,
+      wallWidth: 0,
+      sqMetersPrice: 0,
+      paintCoats: 2,
     },
   });
 
@@ -176,6 +184,12 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   const [registrationDate, setRegistrationDate] = useState<Date | undefined>(form.getValues('registrationDate'));
 
   const budgetType = form.watch('budgetType');
+  const serviceType = form.watch('serviceType');
+
+  const wallWidth = form.watch('wallWidth') || 0;
+  const wallHeight = form.watch('wallHeight') || 0;
+  const sqMetersPrice = form.watch('sqMetersPrice') || 0;
+  const paintCoats = form.watch('paintCoats') || 0;
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!user || !firestore) {
@@ -192,8 +206,12 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       if (values.budgetType === 'daily' && values.period?.from && values.period?.to && values.dailyRate) {
         const workDays = differenceInCalendarDays(values.period.to, values.period.from) + 1;
         finalTotal = workDays * values.dailyRate;
-      } else if (values.budgetType === 'task' && values.total) {
-        finalTotal = values.total;
+      } else if (values.budgetType === 'task') {
+        if (values.serviceType === 'Pintura' && values.wallWidth && values.wallHeight && values.sqMetersPrice && values.paintCoats) {
+          finalTotal = values.wallWidth * values.wallHeight * values.sqMetersPrice * values.paintCoats;
+        } else if (values.total) {
+          finalTotal = values.total;
+        }
       }
 
       const materialCost = values.materialCost || 0;
@@ -215,6 +233,10 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         profit: profit,
         status: values.status,
         userId: user.uid,
+        wallHeight: values.wallHeight,
+        wallWidth: values.wallWidth,
+        sqMetersPrice: values.sqMetersPrice,
+        paintCoats: values.paintCoats,
       };
 
       try {
@@ -264,7 +286,18 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   const workDays = budgetType === 'daily' && date?.from && date?.to ? differenceInCalendarDays(date.to, date.from) + 1 : 0;
   const dailyRateValue = form.watch('dailyRate') || 0;
   const taskTotal = form.watch('total') || 0;
-  const total = budgetType === 'daily' ? workDays * dailyRateValue : taskTotal;
+
+  let total = 0;
+  if (budgetType === 'daily') {
+    total = workDays * dailyRateValue;
+  } else if (budgetType === 'task') {
+    if (serviceType === 'Pintura') {
+      total = wallWidth * wallHeight * sqMetersPrice * paintCoats;
+    } else {
+      total = taskTotal;
+    }
+  }
+  
   const materialCost = form.watch('materialCost') || 0;
   const profit = total - materialCost;
 
@@ -664,8 +697,70 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
               />
           </div>
         )}
+        
+        {budgetType === 'task' && serviceType === 'Pintura' && (
+           <Card className="bg-muted/50 p-6">
+             <CardHeader className="p-0 pb-4">
+                <CardTitle className="text-lg">Cálculo de Pintura</CardTitle>
+            </CardHeader>
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <FormField
+                  control={form.control}
+                  name="wallHeight"
+                  render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Altura (m)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="2.7" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="wallWidth"
+                  render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Largura (m)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="10" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="sqMetersPrice"
+                  render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor/m² (R$)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="25" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="paintCoats"
+                  render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nº de Demãos</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="2" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                  )}
+                />
+             </div>
+           </Card>
+        )}
 
-        {budgetType === 'task' && (
+        {budgetType === 'task' && serviceType !== 'Pintura' && (
             <FormField
             control={form.control}
             name="total"
