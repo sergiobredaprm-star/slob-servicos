@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { settings } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { CompanyProfile, ElectricalServiceItem, HydraulicServiceItem } from '@/lib/types';
@@ -348,382 +349,392 @@ export default function SettingsPage() {
         Configurações
       </h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Perfil de Usuário</CardTitle>
-          <CardDescription>
-            Informações pessoais da sua conta.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...userProfileForm}>
-            <form onSubmit={userProfileForm.handleSubmit(onUserProfileSubmit)} className="space-y-6 max-w-lg">
-              <FormField
-                control={userProfileForm.control}
-                name="displayName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome de Exibição</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Seu Nome" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={userProfileForm.control}
-                name="photoURL"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>URL da Foto do Perfil</FormLabel>
-                    <FormControl>
-                      <Input type="url" placeholder="https://exemplo.com/sua-foto.jpg" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                        Cole a URL de uma imagem para usar como sua foto de perfil.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={isUserSubmitPending}>
-                {isUserSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Perfil
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Dados da Empresa</CardTitle>
-          <CardDescription>
-            Informações da sua empresa que podem ser usadas em orçamentos e relatórios.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...companyForm}>
-            <form onSubmit={companyForm.handleSubmit(onCompanySubmit)} className="space-y-6 max-w-lg">
-              <FormField
-                control={companyForm.control}
-                name="companyName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome da Empresa</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Sua Empresa LTDA" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <FormField
-                  control={companyForm.control}
-                  name="companyEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="contato@suaempresa.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={companyForm.control}
-                  name="companyPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefone</FormLabel>
-                      <FormControl>
-                        <Input placeholder="(99) 99999-9999" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-               <FormField
-                control={companyForm.control}
-                name="companyAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Endereço</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Rua, Número, Cidade, Estado, CEP" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <FormField
-                    control={companyForm.control}
-                    name="companyWebsite"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Website</FormLabel>
-                        <FormControl>
-                          <Input placeholder="https://suaempresa.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+      <Tabs defaultValue="general" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="general">Geral</TabsTrigger>
+          <TabsTrigger value="service-items">Itens de Serviço</TabsTrigger>
+          <TabsTrigger value="daily-rate">Diária</TabsTrigger>
+        </TabsList>
+        <TabsContent value="general" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Perfil de Usuário</CardTitle>
+                <CardDescription>
+                  Informações pessoais da sua conta.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...userProfileForm}>
+                  <form onSubmit={userProfileForm.handleSubmit(onUserProfileSubmit)} className="space-y-6 max-w-lg">
+                    <FormField
+                      control={userProfileForm.control}
+                      name="displayName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome de Exibição</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Seu Nome" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={userProfileForm.control}
+                      name="photoURL"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL da Foto do Perfil</FormLabel>
+                          <FormControl>
+                            <Input type="url" placeholder="https://exemplo.com/sua-foto.jpg" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                              Cole a URL de uma imagem para usar como sua foto de perfil.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={isUserSubmitPending}>
+                      {isUserSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Salvar Perfil
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Dados da Empresa</CardTitle>
+                <CardDescription>
+                  Informações da sua empresa que podem ser usadas em orçamentos e relatórios.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...companyForm}>
+                  <form onSubmit={companyForm.handleSubmit(onCompanySubmit)} className="space-y-6 max-w-lg">
+                    <FormField
+                      control={companyForm.control}
+                      name="companyName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome da Empresa</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Sua Empresa LTDA" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={companyForm.control}
+                        name="companyEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="contato@suaempresa.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={companyForm.control}
+                        name="companyPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Telefone</FormLabel>
+                            <FormControl>
+                              <Input placeholder="(99) 99999-9999" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={companyForm.control}
+                      name="companyAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Endereço</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Rua, Número, Cidade, Estado, CEP" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                          control={companyForm.control}
+                          name="companyWebsite"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Website</FormLabel>
+                              <FormControl>
+                                <Input placeholder="https://suaempresa.com" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={companyForm.control}
+                          name="companyTaxId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>CNPJ</FormLabel>
+                              <FormControl>
+                                <Input placeholder="00.000.000/0001-00" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                    </div>
+
+                    <Button type="submit" disabled={isSubmitPending}>
+                      {isSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Salvar Dados da Empresa
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="service-items" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Itens de Serviço de Elétrica</CardTitle>
+                <CardDescription>
+                  Crie uma lista de serviços de elétrica pré-cadastrados para agilizar a criação de orçamentos.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...electricalItemsForm}>
+                  <form onSubmit={electricalItemsForm.handleSubmit(onElectricalItemsSubmit)} className="space-y-6">
+                    {isLoadingElectricalItems ? (
+                      <div className="flex justify-center items-center h-24">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {electricalFields.map((field, index) => (
+                          <div key={field.id} className="flex items-end gap-4">
+                            <FormField
+                              control={electricalItemsForm.control}
+                              name={`items.${index}.name`}
+                              render={({ field }) => (
+                                <FormItem className="flex-grow">
+                                  <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Ex: Instalação de ponto de tomada" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={electricalItemsForm.control}
+                              name={`items.${index}.defaultValue`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className={cn(index > 0 && 'sr-only')}>Valor Padrão (R$)</FormLabel>
+                                  <FormControl>
+                                    <Input type="number" placeholder="50.00" {...field} className="w-36" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => handleRemoveElectricalItem(index, field.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => electricalAppend({ name: '', defaultValue: 0 })}
+                        >
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Adicionar Novo Item
+                        </Button>
+                      </div>
                     )}
-                  />
+
+                    <Button type="submit" disabled={isElectricalSubmitPending || isLoadingElectricalItems}>
+                      {isElectricalSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Salvar Itens de Elétrica
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Itens de Serviço de Hidráulica</CardTitle>
+                <CardDescription>
+                  Crie uma lista de serviços de hidráulica pré-cadastrados para agilizar a criação de orçamentos.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...hydraulicItemsForm}>
+                  <form onSubmit={hydraulicItemsForm.handleSubmit(onHydraulicItemsSubmit)} className="space-y-6">
+                    {isLoadingHydraulicItems ? (
+                      <div className="flex justify-center items-center h-24">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {hydraulicFields.map((field, index) => (
+                          <div key={field.id} className="flex items-end gap-4">
+                            <FormField
+                              control={hydraulicItemsForm.control}
+                              name={`items.${index}.name`}
+                              render={({ field }) => (
+                                <FormItem className="flex-grow">
+                                  <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Ex: Instalação de ponto de água" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={hydraulicItemsForm.control}
+                              name={`items.${index}.defaultValue`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className={cn(index > 0 && 'sr-only')}>Valor Padrão (R$)</FormLabel>
+                                  <FormControl>
+                                    <Input type="number" placeholder="70.00" {...field} className="w-36" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => handleRemoveHydraulicItem(index, field.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => hydraulicAppend({ name: '', defaultValue: 0 })}
+                        >
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Adicionar Novo Item
+                        </Button>
+                      </div>
+                    )}
+
+                    <Button type="submit" disabled={isHydraulicSubmitPending || isLoadingHydraulicItems}>
+                      {isHydraulicSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Salvar Itens de Hidráulica
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="daily-rate">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuração de Diária Padrão</CardTitle>
+              <CardDescription>
+                Defina os valores padrão para seus orçamentos. Eles podem ser
+                ajustados individualmente em cada novo orçamento.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...settingsForm}>
+                <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-8 max-w-lg">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={settingsForm.control}
+                      name="startTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Início da Jornada</FormLabel>
+                          <FormControl>
+                            <Input type="time" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={settingsForm.control}
+                      name="endTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fim da Jornada</FormLabel>
+                          <FormControl>
+                            <Input type="time" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
-                    control={companyForm.control}
-                    name="companyTaxId"
+                    control={settingsForm.control}
+                    name="workload"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CNPJ</FormLabel>
+                        <FormLabel>Carga Horária (horas)</FormLabel>
                         <FormControl>
-                          <Input placeholder="00.000.000/0001-00" {...field} />
+                          <Input type="number" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Incluindo intervalos, como almoço.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="defaultRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor da Diária Padrão (R$)</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-               </div>
-
-              <Button type="submit" disabled={isSubmitPending}>
-                 {isSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Dados da Empresa
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Itens de Serviço de Elétrica</CardTitle>
-          <CardDescription>
-            Crie uma lista de serviços de elétrica pré-cadastrados para agilizar a criação de orçamentos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...electricalItemsForm}>
-            <form onSubmit={electricalItemsForm.handleSubmit(onElectricalItemsSubmit)} className="space-y-6">
-               {isLoadingElectricalItems ? (
-                 <div className="flex justify-center items-center h-24">
-                   <Loader2 className="h-6 w-6 animate-spin" />
-                 </div>
-               ) : (
-                <div className="space-y-4">
-                  {electricalFields.map((field, index) => (
-                    <div key={field.id} className="flex items-end gap-4">
-                      <FormField
-                        control={electricalItemsForm.control}
-                        name={`items.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem className="flex-grow">
-                            <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ex: Instalação de ponto de tomada" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                       <FormField
-                        control={electricalItemsForm.control}
-                        name={`items.${index}.defaultValue`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={cn(index > 0 && 'sr-only')}>Valor Padrão (R$)</FormLabel>
-                            <FormControl>
-                              <Input type="number" placeholder="50.00" {...field} className="w-36" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleRemoveElectricalItem(index, field.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => electricalAppend({ name: '', defaultValue: 0 })}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Adicionar Novo Item
-                  </Button>
-                </div>
-               )}
-
-              <Button type="submit" disabled={isElectricalSubmitPending || isLoadingElectricalItems}>
-                {isElectricalSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Itens de Elétrica
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Itens de Serviço de Hidráulica</CardTitle>
-          <CardDescription>
-            Crie uma lista de serviços de hidráulica pré-cadastrados para agilizar a criação de orçamentos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...hydraulicItemsForm}>
-            <form onSubmit={hydraulicItemsForm.handleSubmit(onHydraulicItemsSubmit)} className="space-y-6">
-               {isLoadingHydraulicItems ? (
-                 <div className="flex justify-center items-center h-24">
-                   <Loader2 className="h-6 w-6 animate-spin" />
-                 </div>
-               ) : (
-                <div className="space-y-4">
-                  {hydraulicFields.map((field, index) => (
-                    <div key={field.id} className="flex items-end gap-4">
-                      <FormField
-                        control={hydraulicItemsForm.control}
-                        name={`items.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem className="flex-grow">
-                            <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ex: Instalação de ponto de água" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                       <FormField
-                        control={hydraulicItemsForm.control}
-                        name={`items.${index}.defaultValue`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={cn(index > 0 && 'sr-only')}>Valor Padrão (R$)</FormLabel>
-                            <FormControl>
-                              <Input type="number" placeholder="70.00" {...field} className="w-36" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleRemoveHydraulicItem(index, field.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => hydraulicAppend({ name: '', defaultValue: 0 })}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Adicionar Novo Item
-                  </Button>
-                </div>
-               )}
-
-              <Button type="submit" disabled={isHydraulicSubmitPending || isLoadingHydraulicItems}>
-                {isHydraulicSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Itens de Hidráulica
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Configuração de Diária Padrão</CardTitle>
-          <CardDescription>
-            Defina os valores padrão para seus orçamentos. Eles podem ser
-            ajustados individualmente em cada novo orçamento.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...settingsForm}>
-            <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-8 max-w-lg">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={settingsForm.control}
-                  name="startTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Início da Jornada</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={settingsForm.control}
-                  name="endTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fim da Jornada</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={settingsForm.control}
-                name="workload"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Carga Horária (horas)</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Incluindo intervalos, como almoço.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={settingsForm.control}
-                name="defaultRate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Valor da Diária Padrão (R$)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit">Salvar Configurações da Diária</Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                  <Button type="submit">Salvar Configurações da Diária</Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
