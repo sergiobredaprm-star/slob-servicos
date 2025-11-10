@@ -18,6 +18,13 @@ export type ElectricalItem = {
   value: number;
 };
 
+export type ElectricalServiceItem = {
+  id: string;
+  name: string;
+  defaultValue: number;
+  userId: string;
+};
+
 export type Budget = {
   id:string;
   clientId: string;

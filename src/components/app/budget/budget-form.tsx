@@ -44,7 +44,7 @@ import { getTaskSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Budget, Client, ServiceType, ElectricalItem } from '@/lib/types';
+import { Budget, Client, ServiceType, ElectricalItem, ElectricalServiceItem } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { saveBudget } from '@/lib/firebase/services';
@@ -136,6 +136,14 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   , [firestore, user]);
 
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
+  
+  const electricalItemsQuery = useMemoFirebase(
+    () => user && firestore ? query(collection(firestore, 'users', user.uid, 'electricalServiceItems')) : null,
+    [firestore, user]
+  );
+  
+  const { data: electricalServiceItems, isLoading: isLoadingElectricalItems } = useCollection<ElectricalServiceItem>(electricalItemsQuery);
+
 
   const sortedClients = useMemo(() => {
     if (!clients) return [];
@@ -178,7 +186,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: 'electricalItems',
   });
@@ -795,9 +803,30 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className={cn(index > 0 && "sr-only")}>Item</FormLabel>
-                            <FormControl>
-                              <Input placeholder={`Item ${index + 1}`} {...field} />
-                            </FormControl>
+                             <Select
+                              onValueChange={(value) => {
+                                const selectedItem = electricalServiceItems?.find(item => item.name === value);
+                                if (selectedItem) {
+                                  update(index, { 
+                                    name: selectedItem.name, 
+                                    value: selectedItem.defaultValue,
+                                    quantity: 1,
+                                  });
+                                }
+                              }}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={isLoadingElectricalItems ? "Carregando..." : "Selecione um item ou digite"} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {electricalServiceItems?.map(item => (
+                                  <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}

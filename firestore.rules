@@ -12,6 +12,7 @@
  * - /users/{userId}/budgets/{budgetId}: Budgets owned by a specific user.
  * - /users/{userId}/dailyRates/{dailyRateId}: Daily rates owned by a specific user.
  * - /users/{userId}/companyProfile/{profileId}: Company Profile owned by a specific user.
+ * - /users/{userId}/electricalServiceItems/{itemId}: Predefined electrical service items owned by a user.
  *
  * Key Security Decisions:
  * - Users cannot list all user profiles (to protect privacy).
@@ -141,6 +142,32 @@ service cloud.firestore {
       allow list: if isOwner(userId);
 
       // Write rules: Only the owner can create, update, or delete their company profile.
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for predefined electrical service items. Only the owner can manage their own list of items.
+     * @path /users/{userId}/electricalServiceItems/{itemId}
+     * @allow (create) User 'bob@example.com' (uid: 'bob') can create an item under /users/bob/electricalServiceItems/item1.
+     * @deny (create) User 'alice@example.com' (uid: 'alice') cannot create an item under /users/bob/electricalServiceItems/item1.
+     * @allow (get) User 'bob@example.com' (uid: 'bob') can read an item under /users/bob/electricalServiceItems/item1.
+     * @deny (get) User 'alice@example.com' (uid: 'alice') cannot read an item under /users/bob/electricalServiceItems/item1.
+     * @allow (list) User 'bob@example.com' (uid: 'bob') can list items under /users/bob/electricalServiceItems
+     * @deny (list) User 'alice@example.com' (uid: 'alice') cannot list items under /users/bob/electricalServiceItems
+     * @allow (update) User 'bob@example.com' (uid: 'bob') can update an item under /users/bob/electricalServiceItems/item1.
+     * @deny (update) User 'alice@example.com' (uid: 'alice') cannot update an item under /users/bob/electricalServiceItems/item1.
+     * @allow (delete) User 'bob@example.com' (uid: 'bob') can delete an item under /users/bob/electricalServiceItems/item1.
+     * @deny (delete) User 'alice@example.com' (uid: 'alice') cannot delete an item under /users/bob/electricalServiceItems/item1.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/electricalServiceItems/{itemId} {
+      // Read rules: Only the owner can read and list their items.
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      // Write rules: Only the owner can create, update, or delete their items.
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);

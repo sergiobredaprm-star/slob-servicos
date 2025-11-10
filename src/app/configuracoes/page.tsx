@@ -1,6 +1,6 @@
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,12 +22,15 @@ import {
 } from '@/components/ui/card';
 import { settings } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { CompanyProfile } from '@/lib/types';
+import { CompanyProfile, ElectricalServiceItem } from '@/lib/types';
 import { useEffect, useState, useTransition } from 'react';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { getCompanyProfile, saveCompanyProfile } from '@/lib/firebase/company-services';
-import { Loader2 } from 'lucide-react';
+import { saveElectricalItem, deleteElectricalItem } from '@/lib/firebase/electrical-item-services';
+import { Loader2, Trash2, PlusCircle } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
+import { collection, query } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 const settingsSchema = z.object({
   startTime: z.string(),
@@ -50,6 +53,16 @@ const userProfileSchema = z.object({
   photoURL: z.string().url({ message: 'Por favor, insira uma URL válida.' }).optional().or(z.literal('')),
 });
 
+const electricalItemSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'A descrição é obrigatória.'),
+  defaultValue: z.coerce.number().min(0, 'O valor deve ser positivo.'),
+});
+
+const electricalItemsFormSchema = z.object({
+  items: z.array(electricalItemSchema),
+});
+
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -57,6 +70,7 @@ export default function SettingsPage() {
   const [companyProfileId, setCompanyProfileId] = useState<string | undefined>(undefined);
   const [isSubmitPending, startSubmitTransition] = useTransition();
   const [isUserSubmitPending, startUserSubmitTransition] = useTransition();
+  const [isElectricalSubmitPending, startElectricalSubmitTransition] = useTransition();
 
   const settingsForm = useForm<z.infer<typeof settingsSchema>>({
     resolver: zodResolver(settingsSchema),
@@ -82,6 +96,32 @@ export default function SettingsPage() {
       photoURL: '',
     },
   });
+
+  const electricalItemsQuery = useMemoFirebase(
+    () => user && firestore ? query(collection(firestore, 'users', user.uid, 'electricalServiceItems')) : null,
+    [firestore, user]
+  );
+  
+  const { data: electricalItems, isLoading: isLoadingElectricalItems } = useCollection<ElectricalServiceItem>(electricalItemsQuery);
+
+  const electricalItemsForm = useForm<z.infer<typeof electricalItemsFormSchema>>({
+    resolver: zodResolver(electricalItemsFormSchema),
+    defaultValues: {
+      items: [],
+    },
+  });
+  
+  const { fields, append, remove, replace } = useFieldArray({
+    control: electricalItemsForm.control,
+    name: 'items',
+  });
+
+  useEffect(() => {
+    if (electricalItems) {
+      replace(electricalItems);
+    }
+  }, [electricalItems, replace]);
+
 
   useEffect(() => {
     async function fetchCompanyProfile() {
@@ -169,6 +209,53 @@ export default function SettingsPage() {
         });
       }
     });
+  }
+
+  function onElectricalItemsSubmit(values: z.infer<typeof electricalItemsFormSchema>) {
+    if (!user || !firestore) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
+      return;
+    }
+    startElectricalSubmitTransition(async () => {
+      try {
+        await Promise.all(values.items.map(item => {
+          const { id, ...itemData } = item;
+          return saveElectricalItem(firestore, user.uid, itemData, id);
+        }));
+        
+        toast({
+          title: 'Itens de Elétrica Salvos!',
+          description: 'Sua lista de itens de serviço foi atualizada.',
+        });
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao Salvar',
+          description: 'Não foi possível salvar os itens de elétrica.',
+        });
+      }
+    });
+  }
+
+  async function handleRemoveElectricalItem(index: number, itemId?: string) {
+    if (!user || !firestore) return;
+    if (itemId) {
+      try {
+        await deleteElectricalItem(firestore, user.uid, itemId);
+        toast({
+          title: 'Item Removido',
+          description: 'O item foi removido da sua lista.',
+        });
+      } catch(e) {
+         toast({
+          variant: 'destructive',
+          title: 'Erro ao Remover',
+          description: 'Não foi possível remover o item.',
+        });
+      }
+    }
+    remove(index);
   }
 
   return (
@@ -326,6 +413,82 @@ export default function SettingsPage() {
           </Form>
         </CardContent>
       </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Itens de Serviço de Elétrica</CardTitle>
+          <CardDescription>
+            Crie uma lista de serviços de elétrica pré-cadastrados para agilizar a criação de orçamentos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...electricalItemsForm}>
+            <form onSubmit={electricalItemsForm.handleSubmit(onElectricalItemsSubmit)} className="space-y-6">
+               {isLoadingElectricalItems ? (
+                 <div className="flex justify-center items-center h-24">
+                   <Loader2 className="h-6 w-6 animate-spin" />
+                 </div>
+               ) : (
+                <div className="space-y-4">
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="flex items-end gap-4">
+                      <FormField
+                        control={electricalItemsForm.control}
+                        name={`items.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem className="flex-grow">
+                            <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ex: Instalação de ponto de tomada" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <FormField
+                        control={electricalItemsForm.control}
+                        name={`items.${index}.defaultValue`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && 'sr-only')}>Valor Padrão (R$)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="50.00" {...field} className="w-36" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleRemoveElectricalItem(index, field.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ name: '', defaultValue: 0 })}
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Adicionar Novo Item
+                  </Button>
+                </div>
+               )}
+
+              <Button type="submit" disabled={isElectricalSubmitPending || isLoadingElectricalItems}>
+                {isElectricalSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar Itens de Elétrica
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader>

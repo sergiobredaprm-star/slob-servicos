@@ -90,6 +90,26 @@
       },
       "required": ["name", "quantity", "value"]
     },
+    "ElectricalServiceItem": {
+      "title": "Electrical Service Item",
+      "type": "object",
+      "description": "Represents a predefined item for electrical services with a default value.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Description of the electrical service item (e.g., 'Instalação de tomada dupla')."
+        },
+        "defaultValue": {
+          "type": "number",
+          "description": "The default price for this service item."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this service item."
+        }
+      },
+      "required": ["name", "defaultValue", "userId"]
+    },
     "Budget": {
       "title": "Budget",
       "type": "object",
@@ -305,6 +325,10 @@
     "/users/{userId}/companyProfile/{profileId}": {
       "schema": { "$ref": "#/entities/CompanyProfile" },
       "description": "Sub-collection for the company profile owned by a specific user."
+    },
+    "/users/{userId}/electricalServiceItems/{itemId}": {
+      "schema": { "$ref": "#/entities/ElectricalServiceItem" },
+      "description": "Sub-collection for predefined electrical service items for a specific user."
     }
   }
 }
