@@ -395,7 +395,7 @@ export default function SettingsPage() {
                             <Input type="url" placeholder="https://exemplo.com/sua-foto.jpg" {...field} />
                           </FormControl>
                           <FormDescription>
-                              Cole a URL de uma imagem para usar como sua foto de perfil.
+                            Cole o link direto para uma imagem (ex: .jpg, .png). Links do Google Fotos ou redes sociais podem não funcionar.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
