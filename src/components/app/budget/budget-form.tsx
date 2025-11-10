@@ -153,7 +153,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       },
       deadline: initialData.deadline as Date | undefined,
       clientId: initialData.clientId || '',
-      electricalItems: initialData.electricalItems || [{ name: '', quantity: 1, value: 0 }],
+      electricalItems: initialData.electricalItems && initialData.electricalItems.length > 0 ? initialData.electricalItems : [{ name: '', quantity: 1, value: 0 }],
     } : {
       clientId: '',
       clientName: '',
@@ -781,58 +781,71 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
               <CardTitle className="text-lg">Itens do Serviço de Elétrica</CardTitle>
             </CardHeader>
             <div className="space-y-4">
-              {fields.map((field, index) => (
-                <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto] items-end gap-4">
-                  <FormField
-                    control={form.control}
-                    name={`electricalItems.${index}.name`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Item {index + 1}</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Instalação de tomada" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`electricalItems.${index}.quantity`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Qtd.</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="1" {...field} className="w-20" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`electricalItems.${index}.value`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor Unit. (R$)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="50.00" {...field} className="w-28" />
-                        </FormControl>
-                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => remove(index)}
-                    disabled={fields.length <= 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+              {fields.map((field, index) => {
+                const item = electricalItems?.[index];
+                const quantity = item?.quantity || 0;
+                const value = item?.value || 0;
+                const itemTotal = quantity * value;
+
+                return (
+                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-end gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`electricalItems.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Item</FormLabel>
+                            <FormControl>
+                              <Input placeholder={`Item ${index + 1}`} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`electricalItems.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Qtd.</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="1" {...field} className="w-20" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`electricalItems.${index}.value`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Valor Unit. (R$)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="50.00" {...field} className="w-28" />
+                            </FormControl>
+                             <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <div className="space-y-2">
+                        <FormLabel className={cn(index > 0 && "sr-only")}>Valor Total (R$)</FormLabel>
+                        <div className="flex h-10 w-28 items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
+                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(itemTotal)}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        disabled={fields.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                )
+              })}
               <Button
                 type="button"
                 variant="outline"
