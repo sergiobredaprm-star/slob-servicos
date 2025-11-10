@@ -18,6 +18,8 @@
  * - Profile images can be publicly read (as they are used in the UI).
  * - Writes to profile image paths are restricted to the owner and have a size limit.
  * - No global admin roles are defined in this ruleset.
+ *
+ * Force rule re-deployment.
  */
 rules_version = '2';
 
