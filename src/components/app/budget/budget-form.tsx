@@ -44,7 +44,7 @@ import { getTaskSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Budget, Client, ServiceType, ElectricalItem, ElectricalServiceItem } from '@/lib/types';
+import { Budget, Client, ServiceType, ElectricalItem, ElectricalServiceItem, HydraulicItem, HydraulicServiceItem } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { saveBudget } from '@/lib/firebase/services';
@@ -60,6 +60,12 @@ import { collection, query } from 'firebase/firestore';
 const serviceTypes: ServiceType[] = ['Pintura', 'Elétrica', 'Hidráulica', 'Alvenaria', 'Outro'];
 
 const electricalItemSchema = z.object({
+  name: z.string().min(1, 'A descrição do item é obrigatória.'),
+  quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
+  value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
+});
+
+const hydraulicItemSchema = z.object({
   name: z.string().min(1, 'A descrição do item é obrigatória.'),
   quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
   value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
@@ -97,6 +103,7 @@ const formSchema = z.object({
   sqMetersPrice: z.coerce.number().optional(),
   paintCoats: z.coerce.number().optional(),
   electricalItems: z.array(electricalItemSchema).optional(),
+  hydraulicItems: z.array(hydraulicItemSchema).optional(),
 }).refine(data => {
   if (data.budgetType === 'daily') {
     return !!data.period && !!data.dailyRate && data.dailyRate > 0 && !!data.period.from && !!data.period.to && data.period.from < data.period.to;
@@ -106,7 +113,7 @@ const formSchema = z.object({
   message: 'Para orçamento por diária, o período e o valor da diária são obrigatórios.',
   path: ['budgetType'],
 }).refine(data => {
-    if (data.budgetType === 'task' && data.serviceType !== 'Pintura' && data.serviceType !== 'Elétrica') {
+    if (data.budgetType === 'task' && data.serviceType !== 'Pintura' && data.serviceType !== 'Elétrica' && data.serviceType !== 'Hidráulica') {
         return !!data.total && data.total > 0;
     }
     return true;
@@ -143,6 +150,13 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   );
   
   const { data: electricalServiceItems, isLoading: isLoadingElectricalItems } = useCollection<ElectricalServiceItem>(electricalItemsQuery);
+  
+  const hydraulicItemsQuery = useMemoFirebase(
+    () => user && firestore ? query(collection(firestore, 'users', user.uid, 'hydraulicServiceItems')) : null,
+    [firestore, user]
+  );
+
+  const { data: hydraulicServiceItems, isLoading: isLoadingHydraulicItems } = useCollection<HydraulicServiceItem>(hydraulicItemsQuery);
 
 
   const sortedClients = useMemo(() => {
@@ -154,6 +168,11 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
     if (!electricalServiceItems) return [];
     return [...electricalServiceItems].sort((a, b) => a.name.localeCompare(b.name));
   }, [electricalServiceItems]);
+  
+  const sortedHydraulicServiceItems = useMemo(() => {
+    if (!hydraulicServiceItems) return [];
+    return [...hydraulicServiceItems].sort((a, b) => a.name.localeCompare(b.name));
+  }, [hydraulicServiceItems]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -167,6 +186,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       deadline: initialData.deadline as Date | undefined,
       clientId: initialData.clientId || '',
       electricalItems: initialData.electricalItems && initialData.electricalItems.length > 0 ? initialData.electricalItems : [{ name: '', quantity: 1, value: 0 }],
+      hydraulicItems: initialData.hydraulicItems && initialData.hydraulicItems.length > 0 ? initialData.hydraulicItems : [{ name: '', quantity: 1, value: 0 }],
     } : {
       clientId: '',
       clientName: '',
@@ -188,12 +208,18 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       sqMetersPrice: 0,
       paintCoats: 2,
       electricalItems: [{ name: '', quantity: 1, value: 0 }],
+      hydraulicItems: [{ name: '', quantity: 1, value: 0 }],
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields: electricalFields, append: electricalAppend, remove: electricalRemove, update: electricalUpdate } = useFieldArray({
     control: form.control,
     name: 'electricalItems',
+  });
+  
+  const { fields: hydraulicFields, append: hydraulicAppend, remove: hydraulicRemove, update: hydraulicUpdate } = useFieldArray({
+    control: form.control,
+    name: 'hydraulicItems',
   });
 
    useEffect(() => {
@@ -220,6 +246,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
   const totalArea = wallWidth * wallHeight;
 
   const electricalItems = form.watch('electricalItems');
+  const hydraulicItems = form.watch('hydraulicItems');
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!user || !firestore) {
@@ -241,6 +268,8 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
           finalTotal = values.wallWidth * values.wallHeight * values.sqMetersPrice * values.paintCoats;
         } else if (values.serviceType === 'Elétrica' && values.electricalItems) {
             finalTotal = values.electricalItems.reduce((acc, item) => acc + (item.quantity * item.value), 0);
+        } else if (values.serviceType === 'Hidráulica' && values.hydraulicItems) {
+            finalTotal = values.hydraulicItems.reduce((acc, item) => acc + (item.quantity * item.value), 0);
         } else if (values.total) {
           finalTotal = values.total;
         }
@@ -257,6 +286,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         profit: profit,
         userId: user.uid,
         electricalItems: values.serviceType === 'Elétrica' ? values.electricalItems : [],
+        hydraulicItems: values.serviceType === 'Hidráulica' ? values.hydraulicItems : [],
       };
 
       try {
@@ -315,6 +345,8 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       total = wallWidth * wallHeight * sqMetersPrice * paintCoats;
     } else if (serviceType === 'Elétrica') {
         total = electricalItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
+    } else if (serviceType === 'Hidráulica') {
+        total = hydraulicItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
     } else {
       total = taskTotal;
     }
@@ -467,7 +499,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
             </FormItem>
           )}
         />
-
+        
         {budgetType === 'task' && serviceType === 'Pintura' && (
            <Card className="bg-muted/50 p-6">
              <CardHeader className="p-0 pb-4">
@@ -542,7 +574,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
               <CardTitle className="text-lg">Itens do Serviço de Elétrica</CardTitle>
             </CardHeader>
             <div className="space-y-4">
-              {fields.map((field, index) => {
+              {electricalFields.map((field, index) => {
                 const item = electricalItems?.[index];
                 const quantity = item?.quantity || 0;
                 const value = item?.value || 0;
@@ -560,7 +592,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                               onValueChange={(value) => {
                                 const selectedItem = sortedElectricalServiceItems?.find(item => item.name === value);
                                 if (selectedItem) {
-                                  update(index, { 
+                                  electricalUpdate(index, { 
                                     name: selectedItem.name, 
                                     value: selectedItem.defaultValue,
                                     quantity: 1,
@@ -620,8 +652,8 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                         type="button"
                         variant="destructive"
                         size="icon"
-                        onClick={() => remove(index)}
-                        disabled={fields.length <= 1}
+                        onClick={() => electricalRemove(index)}
+                        disabled={electricalFields.length <= 1}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -632,7 +664,112 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({ name: '', quantity: 1, value: 0 })}
+                onClick={() => electricalAppend({ name: '', quantity: 1, value: 0 })}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar Item
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {budgetType === 'task' && serviceType === 'Hidráulica' && (
+          <Card className="bg-muted/50 p-6">
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-lg">Itens do Serviço de Hidráulica</CardTitle>
+            </CardHeader>
+            <div className="space-y-4">
+              {hydraulicFields.map((field, index) => {
+                const item = hydraulicItems?.[index];
+                const quantity = item?.quantity || 0;
+                const value = item?.value || 0;
+                const itemTotal = quantity * value;
+
+                return (
+                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-end gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`hydraulicItems.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Item</FormLabel>
+                             <Select
+                              onValueChange={(value) => {
+                                const selectedItem = sortedHydraulicServiceItems?.find(item => item.name === value);
+                                if (selectedItem) {
+                                  hydraulicUpdate(index, { 
+                                    name: selectedItem.name, 
+                                    value: selectedItem.defaultValue,
+                                    quantity: 1,
+                                  });
+                                }
+                              }}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={isLoadingHydraulicItems ? "Carregando..." : "Selecione um item ou digite"} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {sortedHydraulicServiceItems?.map(item => (
+                                  <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`hydraulicItems.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Qtd.</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="1" {...field} className="w-20" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`hydraulicItems.${index}.value`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Valor Unit. (R$)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="50.00" {...field} className="w-28" />
+                            </FormControl>
+                             <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <div className="space-y-2">
+                        <FormLabel className={cn(index > 0 && "sr-only")}>Valor Total (R$)</FormLabel>
+                        <div className="flex h-10 w-28 items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
+                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(itemTotal)}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => hydraulicRemove(index)}
+                        disabled={hydraulicFields.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                )
+              })}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => hydraulicAppend({ name: '', quantity: 1, value: 0 })}
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Adicionar Item
@@ -892,7 +1029,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
           </div>
         )}
 
-        {budgetType === 'task' && serviceType !== 'Pintura' && serviceType !== 'Elétrica' && (
+        {budgetType === 'task' && serviceType !== 'Pintura' && serviceType !== 'Elétrica' && serviceType !== 'Hidráulica' && (
             <FormField
             control={form.control}
             name="total"

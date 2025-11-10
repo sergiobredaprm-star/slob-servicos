@@ -110,6 +110,46 @@
       },
       "required": ["name", "defaultValue", "userId"]
     },
+    "HydraulicItem": {
+      "title": "Hydraulic Item",
+      "type": "object",
+      "description": "Represents a single item in a hydraulic budget.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Description of the hydraulic item."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Quantity of the hydraulic item."
+        },
+        "value": {
+          "type": "number",
+          "description": "Unit cost of the hydraulic item."
+        }
+      },
+      "required": ["name", "quantity", "value"]
+    },
+    "HydraulicServiceItem": {
+      "title": "Hydraulic Service Item",
+      "type": "object",
+      "description": "Represents a predefined item for hydraulic services with a default value.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Description of the hydraulic service item (e.g., 'Instalação de ponto de água')."
+        },
+        "defaultValue": {
+          "type": "number",
+          "description": "The default price for this service item."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this service item."
+        }
+      },
+      "required": ["name", "defaultValue", "userId"]
+    },
     "Budget": {
       "title": "Budget",
       "type": "object",
@@ -204,6 +244,13 @@
           "description": "A list of items for an electrical budget.",
           "items": {
             "$ref": "#/entities/ElectricalItem"
+          }
+        },
+        "hydraulicItems": {
+          "type": "array",
+          "description": "A list of items for a hydraulic budget.",
+          "items": {
+            "$ref": "#/entities/HydraulicItem"
           }
         }
       },
@@ -329,6 +376,10 @@
     "/users/{userId}/electricalServiceItems/{itemId}": {
       "schema": { "$ref": "#/entities/ElectricalServiceItem" },
       "description": "Sub-collection for predefined electrical service items for a specific user."
+    },
+    "/users/{userId}/hydraulicServiceItems/{itemId}": {
+      "schema": { "$ref": "#/entities/HydraulicServiceItem" },
+      "description": "Sub-collection for predefined hydraulic service items for a specific user."
     }
   }
 }

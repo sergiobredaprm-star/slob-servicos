@@ -25,6 +25,19 @@ export type ElectricalServiceItem = {
   userId: string;
 };
 
+export type HydraulicItem = {
+  name: string;
+  quantity: number;
+  value: number;
+};
+
+export type HydraulicServiceItem = {
+  id: string;
+  name: string;
+  defaultValue: number;
+  userId: string;
+};
+
 export type Budget = {
   id:string;
   clientId: string;
@@ -51,6 +64,7 @@ export type Budget = {
   sqMetersPrice?: number;
   paintCoats?: number;
   electricalItems?: ElectricalItem[];
+  hydraulicItems?: HydraulicItem[];
 };
 
 export type DailyRateSettings = {

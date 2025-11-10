@@ -22,11 +22,12 @@ import {
 } from '@/components/ui/card';
 import { settings } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { CompanyProfile, ElectricalServiceItem } from '@/lib/types';
+import { CompanyProfile, ElectricalServiceItem, HydraulicServiceItem } from '@/lib/types';
 import { useEffect, useState, useTransition } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { getCompanyProfile, saveCompanyProfile } from '@/lib/firebase/company-services';
 import { saveElectricalItem, deleteElectricalItem } from '@/lib/firebase/electrical-item-services';
+import { saveHydraulicItem, deleteHydraulicItem } from '@/lib/firebase/hydraulic-item-services';
 import { Loader2, Trash2, PlusCircle } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
@@ -63,6 +64,16 @@ const electricalItemsFormSchema = z.object({
   items: z.array(electricalItemSchema),
 });
 
+const hydraulicItemSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'A descrição é obrigatória.'),
+  defaultValue: z.coerce.number().min(0, 'O valor deve ser positivo.'),
+});
+
+const hydraulicItemsFormSchema = z.object({
+  items: z.array(hydraulicItemSchema),
+});
+
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -71,6 +82,7 @@ export default function SettingsPage() {
   const [isSubmitPending, startSubmitTransition] = useTransition();
   const [isUserSubmitPending, startUserSubmitTransition] = useTransition();
   const [isElectricalSubmitPending, startElectricalSubmitTransition] = useTransition();
+  const [isHydraulicSubmitPending, startHydraulicSubmitTransition] = useTransition();
 
   const settingsForm = useForm<z.infer<typeof settingsSchema>>({
     resolver: zodResolver(settingsSchema),
@@ -111,16 +123,41 @@ export default function SettingsPage() {
     },
   });
   
-  const { fields, append, remove, replace } = useFieldArray({
+  const { fields: electricalFields, append: electricalAppend, remove: electricalRemove, replace: electricalReplace } = useFieldArray({
     control: electricalItemsForm.control,
     name: 'items',
   });
 
   useEffect(() => {
     if (electricalItems) {
-      replace(electricalItems);
+      electricalReplace(electricalItems);
     }
-  }, [electricalItems, replace]);
+  }, [electricalItems, electricalReplace]);
+
+  const hydraulicItemsQuery = useMemoFirebase(
+    () => user && firestore ? query(collection(firestore, 'users', user.uid, 'hydraulicServiceItems')) : null,
+    [firestore, user]
+  );
+
+  const { data: hydraulicItems, isLoading: isLoadingHydraulicItems } = useCollection<HydraulicServiceItem>(hydraulicItemsQuery);
+  
+  const hydraulicItemsForm = useForm<z.infer<typeof hydraulicItemsFormSchema>>({
+    resolver: zodResolver(hydraulicItemsFormSchema),
+    defaultValues: {
+      items: [],
+    },
+  });
+
+  const { fields: hydraulicFields, append: hydraulicAppend, remove: hydraulicRemove, replace: hydraulicReplace } = useFieldArray({
+    control: hydraulicItemsForm.control,
+    name: 'items',
+  });
+
+  useEffect(() => {
+    if (hydraulicItems) {
+      hydraulicReplace(hydraulicItems);
+    }
+  }, [hydraulicItems, hydraulicReplace]);
 
 
   useEffect(() => {
@@ -255,7 +292,54 @@ export default function SettingsPage() {
         });
       }
     }
-    remove(index);
+    electricalRemove(index);
+  }
+
+  function onHydraulicItemsSubmit(values: z.infer<typeof hydraulicItemsFormSchema>) {
+    if (!user || !firestore) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
+      return;
+    }
+    startHydraulicSubmitTransition(async () => {
+      try {
+        await Promise.all(values.items.map(item => {
+          const { id, ...itemData } = item;
+          return saveHydraulicItem(firestore, user.uid, itemData, id);
+        }));
+        
+        toast({
+          title: 'Itens de Hidráulica Salvos!',
+          description: 'Sua lista de itens de serviço foi atualizada.',
+        });
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao Salvar',
+          description: 'Não foi possível salvar os itens de hidráulica.',
+        });
+      }
+    });
+  }
+
+  async function handleRemoveHydraulicItem(index: number, itemId?: string) {
+    if (!user || !firestore) return;
+    if (itemId) {
+      try {
+        await deleteHydraulicItem(firestore, user.uid, itemId);
+        toast({
+          title: 'Item Removido',
+          description: 'O item foi removido da sua lista.',
+        });
+      } catch(e) {
+         toast({
+          variant: 'destructive',
+          title: 'Erro ao Remover',
+          description: 'Não foi possível remover o item.',
+        });
+      }
+    }
+    hydraulicRemove(index);
   }
 
   return (
@@ -430,7 +514,7 @@ export default function SettingsPage() {
                  </div>
                ) : (
                 <div className="space-y-4">
-                  {fields.map((field, index) => (
+                  {electricalFields.map((field, index) => (
                     <div key={field.id} className="flex items-end gap-4">
                       <FormField
                         control={electricalItemsForm.control}
@@ -472,7 +556,7 @@ export default function SettingsPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => append({ name: '', defaultValue: 0 })}
+                    onClick={() => electricalAppend({ name: '', defaultValue: 0 })}
                   >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Adicionar Novo Item
@@ -483,6 +567,81 @@ export default function SettingsPage() {
               <Button type="submit" disabled={isElectricalSubmitPending || isLoadingElectricalItems}>
                 {isElectricalSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Salvar Itens de Elétrica
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Itens de Serviço de Hidráulica</CardTitle>
+          <CardDescription>
+            Crie uma lista de serviços de hidráulica pré-cadastrados para agilizar a criação de orçamentos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...hydraulicItemsForm}>
+            <form onSubmit={hydraulicItemsForm.handleSubmit(onHydraulicItemsSubmit)} className="space-y-6">
+               {isLoadingHydraulicItems ? (
+                 <div className="flex justify-center items-center h-24">
+                   <Loader2 className="h-6 w-6 animate-spin" />
+                 </div>
+               ) : (
+                <div className="space-y-4">
+                  {hydraulicFields.map((field, index) => (
+                    <div key={field.id} className="flex items-end gap-4">
+                      <FormField
+                        control={hydraulicItemsForm.control}
+                        name={`items.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem className="flex-grow">
+                            <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ex: Instalação de ponto de água" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <FormField
+                        control={hydraulicItemsForm.control}
+                        name={`items.${index}.defaultValue`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && 'sr-only')}>Valor Padrão (R$)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="70.00" {...field} className="w-36" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleRemoveHydraulicItem(index, field.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => hydraulicAppend({ name: '', defaultValue: 0 })}
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Adicionar Novo Item
+                  </Button>
+                </div>
+               )}
+
+              <Button type="submit" disabled={isHydraulicSubmitPending || isLoadingHydraulicItems}>
+                {isHydraulicSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar Itens de Hidráulica
               </Button>
             </form>
           </Form>
