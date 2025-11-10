@@ -29,13 +29,11 @@ export async function saveBudget(firestore: Firestore, userId: string, budgetDat
     const dataToSave = convertDatesToTimestamps(budgetData);
 
     if (budgetId) {
-        // Update existing budget
         const budgetDoc = doc(firestore, 'users', userId, 'budgets', budgetId);
         return setDocumentNonBlocking(budgetDoc, dataToSave, { merge: true });
     } else {
-        // Create new budget
         const budgetCollection = collection(firestore, 'users', userId, 'budgets');
-        return addDocumentNonBlocking(budgetCollection, {...dataToSave, paymentHistory: [], materialCost: dataToSave.materialCost || 0, profit: dataToSave.profit || 0 });
+        return addDocumentNonBlocking(budgetCollection, {...dataToSave, paymentHistory: [] });
     }
 }
 

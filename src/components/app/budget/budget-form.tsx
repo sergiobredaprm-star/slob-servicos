@@ -280,11 +280,11 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
 
       const budgetData: Omit<Budget, 'id'> = {
         ...values,
-        serviceType: values.serviceType as ServiceType,
         total: finalTotal,
         materialCost: materialCost,
         profit: profit,
         userId: user.uid,
+        serviceType: values.serviceType as ServiceType,
         electricalItems: values.serviceType === 'Elétrica' ? values.electricalItems : [],
         hydraulicItems: values.serviceType === 'Hidráulica' ? values.hydraulicItems : [],
       };
