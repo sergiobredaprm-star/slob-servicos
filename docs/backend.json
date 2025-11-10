@@ -79,12 +79,16 @@
           "type": "string",
           "description": "Description of the electrical item."
         },
+        "quantity": {
+            "type": "number",
+            "description": "Quantity of the electrical item."
+        },
         "value": {
           "type": "number",
-          "description": "Cost of the electrical item."
+          "description": "Unit cost of the electrical item."
         }
       },
-      "required": ["name", "value"]
+      "required": ["name", "quantity", "value"]
     },
     "Budget": {
       "title": "Budget",

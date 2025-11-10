@@ -14,6 +14,7 @@ export type Payment = {
 
 export type ElectricalItem = {
   name: string;
+  quantity: number;
   value: number;
 };
 

@@ -61,6 +61,7 @@ const serviceTypes: ServiceType[] = ['Pintura', 'Elétrica', 'Hidráulica', 'Alv
 
 const electricalItemSchema = z.object({
   name: z.string().min(1, 'A descrição do item é obrigatória.'),
+  quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
   value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
 });
 
@@ -152,7 +153,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       },
       deadline: initialData.deadline as Date | undefined,
       clientId: initialData.clientId || '',
-      electricalItems: initialData.electricalItems || [{ name: '', value: 0 }],
+      electricalItems: initialData.electricalItems || [{ name: '', quantity: 1, value: 0 }],
     } : {
       clientId: '',
       clientName: '',
@@ -173,7 +174,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       wallWidth: 0,
       sqMetersPrice: 0,
       paintCoats: 2,
-      electricalItems: [{ name: '', value: 0 }],
+      electricalItems: [{ name: '', quantity: 1, value: 0 }],
     },
   });
 
@@ -226,7 +227,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         if (values.serviceType === 'Pintura' && values.wallWidth && values.wallHeight && values.sqMetersPrice && values.paintCoats) {
           finalTotal = values.wallWidth * values.wallHeight * values.sqMetersPrice * values.paintCoats;
         } else if (values.serviceType === 'Elétrica' && values.electricalItems) {
-            finalTotal = values.electricalItems.reduce((acc, item) => acc + item.value, 0);
+            finalTotal = values.electricalItems.reduce((acc, item) => acc + (item.quantity * item.value), 0);
         } else if (values.total) {
           finalTotal = values.total;
         }
@@ -300,7 +301,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
     if (serviceType === 'Pintura') {
       total = wallWidth * wallHeight * sqMetersPrice * paintCoats;
     } else if (serviceType === 'Elétrica') {
-        total = electricalItems?.reduce((acc, item) => acc + (item.value || 0), 0) || 0;
+        total = electricalItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
     } else {
       total = taskTotal;
     }
@@ -781,12 +782,12 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
             </CardHeader>
             <div className="space-y-4">
               {fields.map((field, index) => (
-                <div key={field.id} className="flex items-end gap-4">
+                <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto] items-end gap-4">
                   <FormField
                     control={form.control}
                     name={`electricalItems.${index}.name`}
                     render={({ field }) => (
-                      <FormItem className="flex-grow">
+                      <FormItem>
                         <FormLabel>Item {index + 1}</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: Instalação de tomada" {...field} />
@@ -797,12 +798,25 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                   />
                   <FormField
                     control={form.control}
+                    name={`electricalItems.${index}.quantity`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Qtd.</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="1" {...field} className="w-20" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name={`electricalItems.${index}.value`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Valor (R$)</FormLabel>
+                        <FormLabel>Valor Unit. (R$)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="50.00" {...field} />
+                          <Input type="number" placeholder="50.00" {...field} className="w-28" />
                         </FormControl>
                          <FormMessage />
                       </FormItem>
@@ -823,7 +837,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({ name: '', value: 0 })}
+                onClick={() => append({ name: '', quantity: 1, value: 0 })}
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Adicionar Item
