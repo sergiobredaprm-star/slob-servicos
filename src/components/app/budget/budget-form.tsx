@@ -119,7 +119,7 @@ const formSchema = z.object({
     return true;
 }, {
     message: 'Para orçamento por tarefa, o valor total é obrigatório.',
-    path: ['budgetType'],
+    path: ['total'],
 });
 
 type BudgetFormProps = {
