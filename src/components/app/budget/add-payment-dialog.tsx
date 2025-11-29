@@ -92,6 +92,11 @@ export function AddPaymentDialog({
       }
     });
   };
+  
+  const handlePayTotal = () => {
+    const roundedMaxAmount = parseFloat(maxAmount.toFixed(2));
+    form.setValue('amount', roundedMaxAmount, { shouldValidate: true });
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -109,7 +114,14 @@ export function AddPaymentDialog({
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Valor do Pagamento</FormLabel>
+                  <div className="flex justify-between items-center">
+                    <FormLabel>Valor do Pagamento</FormLabel>
+                    {maxAmount > 0 && (
+                      <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={handlePayTotal}>
+                        Pagamento Total
+                      </Button>
+                    )}
+                  </div>
                   <FormControl>
                     <Input type="number" placeholder="0,00" {...field} />
                   </FormControl>
