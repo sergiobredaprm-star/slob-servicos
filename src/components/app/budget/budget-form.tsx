@@ -71,48 +71,42 @@ const hydraulicItemSchema = z.object({
   value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
 });
 
-const formSchema = z.object({
-  clientId: z.string().min(1, {
-    message: 'Selecione um cliente.',
-  }),
+const baseFormSchema = z.object({
+  clientId: z.string().min(1, { message: 'Selecione um cliente.' }),
   clientName: z.string(),
   clientDescription: z.string().optional(),
   serviceType: z.string().min(1, { message: 'Selecione um tipo de serviço.'}),
-  registrationDate: z.date({
-    required_error: "A data de registro é obrigatória.",
-  }),
-  budgetType: z.enum(['daily', 'task'], {
-    required_error: 'Você precisa selecionar um tipo de orçamento.',
-  }),
+  registrationDate: z.date({ required_error: "A data de registro é obrigatória." }),
   deadline: z.date().optional(),
-  task: z.string().min(5, {
-    message: 'A descrição da tarefa deve ter pelo menos 5 caracteres.',
-  }),
-  period: z
-    .object({
-      from: z.date().optional(),
-      to: z.date().optional(),
-    })
-    .optional(),
-  dailyRate: z.coerce.number().optional(),
-  total: z.coerce.number().optional(),
+  task: z.string().min(5, { message: 'A descrição da tarefa deve ter pelo menos 5 caracteres.' }),
   materialCost: z.coerce.number().optional(),
   status: z.enum(['prospecção', 'ativo', 'concluído', 'cancelado']),
+});
+
+const dailyBudgetSchema = baseFormSchema.extend({
+  budgetType: z.literal('daily'),
+  period: z.object({
+    from: z.date({ required_error: 'A data inicial é obrigatória.' }),
+    to: z.date({ required_error: 'A data final é obrigatória.' }),
+  }),
+  dailyRate: z.coerce.number().positive('O valor da diária deve ser maior que zero.'),
+});
+
+const taskBudgetSchema = baseFormSchema.extend({
+  budgetType: z.literal('task'),
+  total: z.coerce.number().optional(),
   wallWidth: z.coerce.number().optional(),
   wallHeight: z.coerce.number().optional(),
   sqMetersPrice: z.coerce.number().optional(),
   paintCoats: z.coerce.number().optional(),
   electricalItems: z.array(electricalItemSchema).optional(),
   hydraulicItems: z.array(hydraulicItemSchema).optional(),
-}).refine(data => {
-  if (data.budgetType === 'daily') {
-    return !!data.period && !!data.dailyRate && data.dailyRate > 0 && !!data.period.from && !!data.period.to && data.period.from < data.period.to;
-  }
-  return true;
-}, {
-  message: 'Para orçamento por diária, o período e o valor da diária são obrigatórios.',
-  path: ['budgetType'],
 });
+
+const formSchema = z.discriminatedUnion('budgetType', [
+  dailyBudgetSchema,
+  taskBudgetSchema,
+]);
 
 type BudgetFormProps = {
   initialData?: Budget;
@@ -229,13 +223,9 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
     }
    }, [initialData, clients, form]);
   
-  const [date, setDate] = useState<DateRange | undefined>(form.getValues('period'));
-  const [deadline, setDeadline] = useState<Date | undefined>(form.getValues('deadline'));
-  const [registrationDate, setRegistrationDate] = useState<Date | undefined>(form.getValues('registrationDate'));
-
   const budgetType = form.watch('budgetType');
   const serviceType = form.watch('serviceType');
-
+  const period = form.watch('period');
   const wallWidth = form.watch('wallWidth') || 0;
   const wallHeight = form.watch('wallHeight') || 0;
   const sqMetersPrice = form.watch('sqMetersPrice') || 0;
@@ -275,9 +265,8 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
       const materialCost = values.materialCost || 0;
       const profit = finalTotal - materialCost;
 
-      const budgetData: Omit<Budget, 'id'> = {
+      const budgetData = {
         ...values,
-        clientId: values.clientId, // Ensure clientId is included
         total: finalTotal,
         materialCost: materialCost,
         profit: profit,
@@ -285,11 +274,10 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
         serviceType: values.serviceType as ServiceType,
         electricalItems: values.serviceType === 'Elétrica' ? values.electricalItems : [],
         hydraulicItems: values.serviceType === 'Hidráulica' ? values.hydraulicItems : [],
-        registrationDate: values.registrationDate,
       };
 
       try {
-        await saveBudget(firestore, user.uid, budgetData, budgetId);
+        await saveBudget(firestore, user.uid, budgetData as Omit<Budget, 'id'>, budgetId);
         toast({
           title: `Orçamento ${budgetId ? 'Atualizado' : 'Criado'}!`,
           description: `O orçamento foi salvo com sucesso.`,
@@ -297,10 +285,11 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
         });
         router.push('/orcamentos');
       } catch (error) {
+         console.error("Save budget error:", error);
          toast({
           variant: 'destructive',
           title: 'Erro ao Salvar',
-          description: `Não foi possível salvar o orçamento. Tente novamente.`,
+          description: `Não foi possível salvar o orçamento. Verifique os campos e tente novamente.`,
         });
       }
     });
@@ -332,7 +321,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
     });
   };
 
-  const workDays = budgetType === 'daily' && date?.from && date?.to ? differenceInCalendarDays(date.to, date.from) + 1 : 0;
+  const workDays = budgetType === 'daily' && period?.from && period?.to ? differenceInCalendarDays(period.to, period.from) + 1 : 0;
   const dailyRateValue = form.watch('dailyRate') || 0;
   const taskTotal = form.watch('total') || 0;
 
