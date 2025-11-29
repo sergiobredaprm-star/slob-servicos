@@ -236,25 +236,34 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
   const electricalItems = form.watch('electricalItems');
   const hydraulicItems = form.watch('hydraulicItems');
 
-  function onValidationErrors(errors: FieldErrors<z.infer<typeof formSchema>>) {
-    console.error("Validation Errors:", errors);
-    // Encontra o primeiro erro e exibe
-    const errorMessages = Object.values(errors).map(error => error?.message);
-    const firstError = errorMessages.find(msg => typeof msg === 'string');
-
-    if (firstError) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro de Validação',
-        description: firstError,
-      });
-    } else {
-        toast({
-        variant: 'destructive',
-        title: 'Erro de Validação',
-        description: 'Por favor, verifique os campos do formulário.',
-      });
+  const getFirstErrorMessage = (errors: FieldErrors): string | undefined => {
+    for (const key in errors) {
+      const error = errors[key];
+      if (typeof error === 'object' && error !== null && 'message' in error) {
+        return error.message as string;
+      }
+      if (Array.isArray(error)) {
+        for (const item of error) {
+          const nestedError = getFirstErrorMessage(item);
+          if (nestedError) return nestedError;
+        }
+      }
+      if (typeof error === 'object' && error !== null) {
+        const nestedError = getFirstErrorMessage(error as FieldErrors);
+        if (nestedError) return nestedError;
+      }
     }
+    return undefined;
+  };
+  
+  function onValidationErrors(errors: FieldErrors<z.infer<typeof formSchema>>) {
+    const firstError = getFirstErrorMessage(errors);
+
+    toast({
+      variant: 'destructive',
+      title: 'Erro de Validação',
+      description: firstError || 'Por favor, verifique os campos do formulário.',
+    });
   }
   
   const onSubmit = (values: z.infer<typeof formSchema>) => {
