@@ -60,15 +60,15 @@ import { collection, query } from 'firebase/firestore';
 const serviceTypes: ServiceType[] = ['Pintura', 'Elétrica', 'Hidráulica', 'Alvenaria', 'Outro'];
 
 const electricalItemSchema = z.object({
-  name: z.string().min(1, 'A descrição do item de elétrica é obrigatória.'),
-  quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
-  value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
+  name: z.string(),
+  quantity: z.coerce.number(),
+  value: z.coerce.number(),
 });
 
 const hydraulicItemSchema = z.object({
-  name: z.string().min(1, 'A descrição do item de hidráulica é obrigatória.'),
-  quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
-  value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
+  name: z.string(),
+  quantity: z.coerce.number(),
+  value: z.coerce.number(),
 });
 
 const baseFormSchema = z.object({
@@ -101,34 +101,37 @@ const taskBudgetSchema = baseFormSchema.extend({
   paintCoats: z.coerce.number().optional(),
   electricalItems: z.array(electricalItemSchema).optional(),
   hydraulicItems: z.array(hydraulicItemSchema).optional(),
-}).refine(
-  (data) => {
-    if (data.serviceType === 'Elétrica') {
-      return !data.electricalItems || data.electricalItems.every(item => item.name && item.quantity > 0 && item.value >= 0);
-    }
-    return true;
-  },
-  {
-    message: 'Todos os campos de itens de elétrica são obrigatórios.',
-    path: ['electricalItems'],
-  }
-).refine(
-  (data) => {
-    if (data.serviceType === 'Hidráulica') {
-      return !data.hydraulicItems || data.hydraulicItems.every(item => item.name && item.quantity > 0 && item.value >= 0);
-    }
-    return true;
-  },
-  {
-    message: 'Todos os campos de itens de hidráulica são obrigatórios.',
-    path: ['hydraulicItems'],
-  }
-);
+});
 
 const formSchema = z.discriminatedUnion('budgetType', [
   dailyBudgetSchema,
   taskBudgetSchema,
-]);
+]).superRefine((data, ctx) => {
+    if (data.budgetType === 'task') {
+        if (data.serviceType === 'Elétrica' && data.electricalItems) {
+            data.electricalItems.forEach((item, index) => {
+                if (!item.name || item.name.trim() === '') {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: 'A descrição do item é obrigatória.',
+                        path: ['electricalItems', index, 'name'],
+                    });
+                }
+            });
+        }
+        if (data.serviceType === 'Hidráulica' && data.hydraulicItems) {
+            data.hydraulicItems.forEach((item, index) => {
+                if (!item.name || item.name.trim() === '') {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: 'A descrição do item é obrigatória.',
+                        path: ['hydraulicItems', index, 'name'],
+                    });
+                }
+            });
+        }
+    }
+});
 
 type BudgetFormProps = {
   initialData?: Budget;
