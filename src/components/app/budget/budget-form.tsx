@@ -113,9 +113,10 @@ type BudgetFormProps = {
   budgetId?: string;
   preselectedClientId?: string;
   preselectedClientName?: string;
+  preselectedClientDescription?: string;
 };
 
-export function BudgetForm({ initialData, budgetId, preselectedClientId, preselectedClientName }: BudgetFormProps) {
+export function BudgetForm({ initialData, budgetId, preselectedClientId, preselectedClientName, preselectedClientDescription }: BudgetFormProps) {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const router = useRouter();
@@ -181,7 +182,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
     } : {
       clientId: preselectedClientId || '',
       clientName: preselectedClientName || '',
-      clientDescription: '',
+      clientDescription: preselectedClientDescription || '',
       serviceType: undefined,
       registrationDate: new Date(),
       task: '',

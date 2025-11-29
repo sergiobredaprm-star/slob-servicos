@@ -170,7 +170,7 @@ export default function ClientDetailsPage() {
                         <CardDescription>Lista de todos os orçamentos associados a este cliente.</CardDescription>
                     </div>
                     <Button asChild>
-                        <Link href={`/orcamentos/novo?clientId=${id}&clientName=${encodeURIComponent(client.name)}`}>
+                        <Link href={`/orcamentos/novo?clientId=${id}&clientName=${encodeURIComponent(client.name)}&clientDescription=${encodeURIComponent(client.notes || '')}`}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Novo Orçamento
                         </Link>

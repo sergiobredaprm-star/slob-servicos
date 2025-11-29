@@ -15,6 +15,7 @@ function NewBudgetPageContent() {
   const searchParams = useSearchParams();
   const clientId = searchParams.get('clientId');
   const clientName = searchParams.get('clientName');
+  const clientDescription = searchParams.get('clientDescription');
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -32,6 +33,7 @@ function NewBudgetPageContent() {
           <BudgetForm
             preselectedClientId={clientId ?? undefined}
             preselectedClientName={clientName ? decodeURIComponent(clientName) : undefined}
+            preselectedClientDescription={clientDescription ? decodeURIComponent(clientDescription) : undefined}
           />
         </CardContent>
       </Card>
