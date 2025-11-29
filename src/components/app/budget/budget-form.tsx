@@ -103,25 +103,27 @@ const taskBudgetSchema = baseFormSchema.extend({
   hydraulicItems: z.array(hydraulicItemSchema).optional(),
 }).refine(
   (data) => {
-    // Se o tipo de serviço for 'Elétrica', então a lista de itens deve ser válida.
     if (data.serviceType === 'Elétrica') {
-      return data.electricalItems && data.electricalItems.every(item => item.name.length > 0);
+      return !data.electricalItems || data.electricalItems.every(item => item.name && item.quantity > 0 && item.value >= 0);
     }
-    // Se o tipo de serviço for 'Hidráulica', então a lista de itens deve ser válida.
-    if (data.serviceType === 'Hidráulica') {
-      return data.hydraulicItems && data.hydraulicItems.every(item => item.name.length > 0);
-    }
-    // Para outros tipos de serviço, não aplicamos essa validação específica.
     return true;
   },
   {
-    // Esta mensagem só aparecerá se a lógica acima falhar para Elétrica ou Hidráulica.
-    message: 'A descrição de um item de serviço está vazia.',
-    // Podemos direcionar o erro, mas é complexo com arrays. O erro geral é suficiente.
-    path: ['electricalItems'], 
+    message: 'Todos os campos de itens de elétrica são obrigatórios.',
+    path: ['electricalItems'],
+  }
+).refine(
+  (data) => {
+    if (data.serviceType === 'Hidráulica') {
+      return !data.hydraulicItems || data.hydraulicItems.every(item => item.name && item.quantity > 0 && item.value >= 0);
+    }
+    return true;
+  },
+  {
+    message: 'Todos os campos de itens de hidráulica são obrigatórios.',
+    path: ['hydraulicItems'],
   }
 );
-
 
 const formSchema = z.discriminatedUnion('budgetType', [
   dailyBudgetSchema,
@@ -1039,7 +1041,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                           initialFocus
                           mode="range"
                           defaultMonth={field.value?.from}
-                          selected={field.value}
+                          selected={field.value as DateRange | undefined}
                           onSelect={(range) => {
                             field.onChange(range);
                             if (range?.from && range?.to) {
