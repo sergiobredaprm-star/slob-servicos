@@ -112,14 +112,6 @@ const formSchema = z.object({
 }, {
   message: 'Para orçamento por diária, o período e o valor da diária são obrigatórios.',
   path: ['budgetType'],
-}).refine(data => {
-    if (data.budgetType === 'task' && data.serviceType !== 'Pintura' && data.serviceType !== 'Elétrica' && data.serviceType !== 'Hidráulica') {
-        return !!data.total && data.total > 0;
-    }
-    return true;
-}, {
-    message: 'Para orçamento por tarefa, o valor total é obrigatório.',
-    path: ['total'],
 });
 
 type BudgetFormProps = {
@@ -293,7 +285,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
         serviceType: values.serviceType as ServiceType,
         electricalItems: values.serviceType === 'Elétrica' ? values.electricalItems : [],
         hydraulicItems: values.serviceType === 'Hidráulica' ? values.hydraulicItems : [],
-        registrationDate: values.registrationDate || new Date(),
+        registrationDate: values.registrationDate,
       };
 
       try {
