@@ -1,6 +1,6 @@
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, FieldErrors } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -235,6 +235,27 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
   const electricalItems = form.watch('electricalItems');
   const hydraulicItems = form.watch('hydraulicItems');
 
+  function onValidationErrors(errors: FieldErrors<z.infer<typeof formSchema>>) {
+    console.error("Validation Errors:", errors);
+    // Encontra o primeiro erro e exibe
+    const errorMessages = Object.values(errors).map(error => error?.message);
+    const firstError = errorMessages.find(msg => typeof msg === 'string');
+
+    if (firstError) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro de Validação',
+        description: firstError,
+      });
+    } else {
+        toast({
+        variant: 'destructive',
+        title: 'Erro de Validação',
+        description: 'Por favor, verifique os campos do formulário.',
+      });
+    }
+  }
+  
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!user || !firestore) {
       toast({
@@ -271,6 +292,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
         materialCost: materialCost,
         profit: profit,
         userId: user.uid,
+        clientId: values.clientId,
         serviceType: values.serviceType as ServiceType,
         electricalItems: values.serviceType === 'Elétrica' ? values.electricalItems : [],
         hydraulicItems: values.serviceType === 'Hidráulica' ? values.hydraulicItems : [],
@@ -345,7 +367,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit, onValidationErrors)} className="space-y-8">
         <FormField
           control={form.control}
           name="clientId"
