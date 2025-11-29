@@ -124,12 +124,6 @@ export default function ClientDetailsPage() {
                         <Button asChild>
                             <Link href={`/clientes/${id}/editar`}>Editar Cliente</Link>
                         </Button>
-                         <Button asChild>
-                            <Link href={`/orcamentos/novo?clientId=${id}&clientName=${encodeURIComponent(client.name)}`}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Novo Orçamento
-                            </Link>
-                        </Button>
                     </div>
                 </div>
             </CardHeader>
@@ -170,8 +164,18 @@ export default function ClientDetailsPage() {
 
          <Card>
             <CardHeader>
-                <CardTitle>Orçamentos do Cliente</CardTitle>
-                <CardDescription>Lista de todos os orçamentos associados a este cliente.</CardDescription>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Orçamentos do Cliente</CardTitle>
+                        <CardDescription>Lista de todos os orçamentos associados a este cliente.</CardDescription>
+                    </div>
+                    <Button asChild>
+                        <Link href={`/orcamentos/novo?clientId=${id}&clientName=${encodeURIComponent(client.name)}`}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Novo Orçamento
+                        </Link>
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 <Table>
