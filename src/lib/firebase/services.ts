@@ -19,7 +19,11 @@ function convertDatesToTimestamps(data: any): any {
     // Always convert registrationDate as it's required
     if (dataToSave.registrationDate instanceof Date) {
         dataToSave.registrationDate = Timestamp.fromDate(dataToSave.registrationDate);
+    } else if (!dataToSave.registrationDate) {
+        // Fallback if it's somehow missing, to avoid silent errors
+        dataToSave.registrationDate = Timestamp.now();
     }
+
 
     // Ensure electricalItems and hydraulicItems are arrays, even if empty
     if (!Array.isArray(dataToSave.electricalItems)) {
