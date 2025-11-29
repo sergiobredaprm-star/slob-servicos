@@ -125,9 +125,11 @@ const formSchema = z.object({
 type BudgetFormProps = {
   initialData?: Budget;
   budgetId?: string;
+  preselectedClientId?: string;
+  preselectedClientName?: string;
 };
 
-export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
+export function BudgetForm({ initialData, budgetId, preselectedClientId, preselectedClientName }: BudgetFormProps) {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const router = useRouter();
@@ -188,8 +190,8 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
       electricalItems: initialData.electricalItems && initialData.electricalItems.length > 0 ? initialData.electricalItems : [{ name: '', quantity: 1, value: 0 }],
       hydraulicItems: initialData.hydraulicItems && initialData.hydraulicItems.length > 0 ? initialData.hydraulicItems : [{ name: '', quantity: 1, value: 0 }],
     } : {
-      clientId: '',
-      clientName: '',
+      clientId: preselectedClientId || '',
+      clientName: preselectedClientName || '',
       clientDescription: '',
       serviceType: undefined,
       registrationDate: new Date(),
@@ -287,6 +289,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
         serviceType: values.serviceType as ServiceType,
         electricalItems: values.serviceType === 'Elétrica' ? values.electricalItems : [],
         hydraulicItems: values.serviceType === 'Hidráulica' ? values.hydraulicItems : [],
+        registrationDate: values.registrationDate || new Date(),
       };
 
       try {
@@ -374,7 +377,7 @@ export function BudgetForm({ initialData, budgetId }: BudgetFormProps) {
                         "w-full justify-between",
                         !field.value && "text-muted-foreground"
                       )}
-                      disabled={isLoadingClients}
+                      disabled={isLoadingClients || !!preselectedClientId}
                     >
                       {isLoadingClients
                         ? "Carregando clientes..."

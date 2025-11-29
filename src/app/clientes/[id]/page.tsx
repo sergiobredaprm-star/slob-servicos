@@ -11,7 +11,7 @@ import { Budget, Client } from '@/lib/types';
 import { collection, doc, query, where } from 'firebase/firestore';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Mail, Phone, User } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, User, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -120,9 +120,17 @@ export default function ClientDetailsPage() {
                             Detalhes e histórico do cliente.
                         </CardDescription>
                     </div>
-                     <Button asChild>
-                        <Link href={`/clientes/${id}/editar`}>Editar Cliente</Link>
-                    </Button>
+                     <div className="flex gap-2">
+                        <Button asChild>
+                            <Link href={`/clientes/${id}/editar`}>Editar Cliente</Link>
+                        </Button>
+                         <Button asChild>
+                            <Link href={`/orcamentos/novo?clientId=${id}&clientName=${encodeURIComponent(client.name)}`}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Novo Orçamento
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="space-y-6 text-sm">

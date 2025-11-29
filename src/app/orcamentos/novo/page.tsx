@@ -8,8 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function NewBudgetPage() {
+function NewBudgetPageContent() {
+  const searchParams = useSearchParams();
+  const clientId = searchParams.get('clientId');
+  const clientName = searchParams.get('clientName');
+
   return (
     <div className="max-w-2xl mx-auto">
       <Card>
@@ -19,12 +25,25 @@ export default function NewBudgetPage() {
           </CardTitle>
           <CardDescription>
             Preencha os detalhes abaixo para criar um novo orçamento.
+            {clientName && ` para ${decodeURIComponent(clientName)}.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <BudgetForm />
+          <BudgetForm
+            preselectedClientId={clientId ?? undefined}
+            preselectedClientName={clientName ? decodeURIComponent(clientName) : undefined}
+          />
         </CardContent>
       </Card>
     </div>
   );
+}
+
+
+export default function NewBudgetPage() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <NewBudgetPageContent />
+    </Suspense>
+  )
 }
