@@ -60,13 +60,13 @@ import { collection, query } from 'firebase/firestore';
 const serviceTypes: ServiceType[] = ['Pintura', 'Elétrica', 'Hidráulica', 'Alvenaria', 'Outro'];
 
 const electricalItemSchema = z.object({
-  name: z.string().min(1, 'A descrição do item é obrigatória.'),
+  name: z.string().min(1, 'A descrição do item de elétrica é obrigatória.'),
   quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
   value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
 });
 
 const hydraulicItemSchema = z.object({
-  name: z.string().min(1, 'A descrição do item é obrigatória.'),
+  name: z.string().min(1, 'A descrição do item de hidráulica é obrigatória.'),
   quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
   value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
 });
@@ -101,7 +101,27 @@ const taskBudgetSchema = baseFormSchema.extend({
   paintCoats: z.coerce.number().optional(),
   electricalItems: z.array(electricalItemSchema).optional(),
   hydraulicItems: z.array(hydraulicItemSchema).optional(),
-});
+}).refine(
+  (data) => {
+    // Se o tipo de serviço for 'Elétrica', então a lista de itens deve ser válida.
+    if (data.serviceType === 'Elétrica') {
+      return data.electricalItems && data.electricalItems.every(item => item.name.length > 0);
+    }
+    // Se o tipo de serviço for 'Hidráulica', então a lista de itens deve ser válida.
+    if (data.serviceType === 'Hidráulica') {
+      return data.hydraulicItems && data.hydraulicItems.every(item => item.name.length > 0);
+    }
+    // Para outros tipos de serviço, não aplicamos essa validação específica.
+    return true;
+  },
+  {
+    // Esta mensagem só aparecerá se a lógica acima falhar para Elétrica ou Hidráulica.
+    message: 'A descrição de um item de serviço está vazia.',
+    // Podemos direcionar o erro, mas é complexo com arrays. O erro geral é suficiente.
+    path: ['electricalItems'], 
+  }
+);
+
 
 const formSchema = z.discriminatedUnion('budgetType', [
   dailyBudgetSchema,
