@@ -139,6 +139,9 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
   const [isSubmitPending, startSubmitTransition] = useTransition();
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
+  const [isRegistrationDateOpen, setIsRegistrationDateOpen] = useState(false);
+  const [isDeadlineOpen, setIsDeadlineOpen] = useState(false);
+  const [isPeriodOpen, setIsPeriodOpen] = useState(false);
   
   const clientsQuery = useMemoFirebase(() => 
     user && firestore ? query(collection(firestore, 'users', user.uid, 'clients')) : null
@@ -831,18 +834,18 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Data de Registro</FormLabel>
-                  <Popover>
+                  <Popover open={isRegistrationDateOpen} onOpenChange={setIsRegistrationDateOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
                           variant={'outline'}
                           className={cn(
                             'pl-3 text-left font-normal',
-                            !registrationDate && 'text-muted-foreground'
+                            !field.value && 'text-muted-foreground'
                           )}
                         >
-                          {registrationDate ? (
-                            format(registrationDate, 'PPP', { locale: ptBR })
+                          {field.value ? (
+                            format(field.value, 'PPP', { locale: ptBR })
                           ) : (
                             <span>Escolha uma data</span>
                           )}
@@ -853,10 +856,10 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={registrationDate}
+                        selected={field.value}
                         onSelect={(date) => {
-                          setRegistrationDate(date);
-                          if(date) field.onChange(date);
+                          field.onChange(date);
+                          setIsRegistrationDateOpen(false);
                         }}
                         initialFocus
                         locale={ptBR}
@@ -873,18 +876,18 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Prazo de Entrega (Opcional)</FormLabel>
-                  <Popover>
+                  <Popover open={isDeadlineOpen} onOpenChange={setIsDeadlineOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
                           variant={'outline'}
                           className={cn(
                             'pl-3 text-left font-normal',
-                            !deadline && 'text-muted-foreground'
+                            !field.value && 'text-muted-foreground'
                           )}
                         >
-                          {deadline ? (
-                            format(deadline, 'PPP', { locale: ptBR })
+                          {field.value ? (
+                            format(field.value, 'PPP', { locale: ptBR })
                           ) : (
                             <span>Escolha uma data</span>
                           )}
@@ -895,10 +898,10 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={deadline}
+                        selected={field.value}
                         onSelect={(date) => {
-                          setDeadline(date);
-                          if(date) field.onChange(date);
+                          field.onChange(date);
+                          setIsDeadlineOpen(false);
                         }}
                         initialFocus
                         locale={ptBR}
@@ -970,7 +973,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
               render={({ field }) => (
                   <FormItem className="flex flex-col">
                   <FormLabel>Período de Trabalho</FormLabel>
-                  <Popover>
+                  <Popover open={isPeriodOpen} onOpenChange={setIsPeriodOpen}>
                       <PopoverTrigger asChild>
                       <FormControl>
                           <Button
@@ -978,17 +981,17 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                           variant={'outline'}
                           className={cn(
                               'pl-3 text-left font-normal',
-                              !date && 'text-muted-foreground'
+                              !field.value?.from && 'text-muted-foreground'
                           )}
                           >
-                          {date?.from ? (
-                              date.to ? (
+                          {field.value?.from ? (
+                              field.value.to ? (
                               <>
-                                  {format(date.from, 'LLL dd, y', { locale: ptBR })} -{' '}
-                                  {format(date.to, 'LLL dd, y', { locale: ptBR })}
+                                  {format(field.value.from, 'LLL dd, y', { locale: ptBR })} -{' '}
+                                  {format(field.value.to, 'LLL dd, y', { locale: ptBR })}
                               </>
                               ) : (
-                              format(date.from, 'LLL dd, y', { locale: ptBR })
+                              format(field.value.from, 'LLL dd, y', { locale: ptBR })
                               )
                           ) : (
                               <span>Escolha um período</span>
@@ -1001,11 +1004,13 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                       <Calendar
                           initialFocus
                           mode="range"
-                          defaultMonth={date?.from}
-                          selected={date}
+                          defaultMonth={field.value?.from}
+                          selected={field.value}
                           onSelect={(range) => {
-                              setDate(range);
-                              if(range) field.onChange(range);
+                            field.onChange(range);
+                            if (range?.from && range?.to) {
+                                setIsPeriodOpen(false);
+                            }
                           }}
                           numberOfMonths={2}
                           locale={ptBR}

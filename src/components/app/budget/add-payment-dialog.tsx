@@ -56,6 +56,7 @@ export function AddPaymentDialog({
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const form = useForm<z.infer<typeof paymentSchema>>({
     resolver: zodResolver(paymentSchema.refine(data => data.amount <= maxAmount, {
@@ -122,7 +123,7 @@ export function AddPaymentDialog({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Data do Pagamento</FormLabel>
-                  <Popover>
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -145,7 +146,10 @@ export function AddPaymentDialog({
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange}
+                        onSelect={(date) => {
+                          field.onChange(date);
+                          setIsCalendarOpen(false);
+                        }}
                         initialFocus
                         locale={ptBR}
                       />
