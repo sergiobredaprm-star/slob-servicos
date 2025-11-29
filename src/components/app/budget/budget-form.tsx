@@ -880,7 +880,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
               name="deadline"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Prazo de Entrega (Opcional)</FormLabel>
+                  <FormLabel>Prazo de Entrega</FormLabel>
                   <Popover open={isDeadlineOpen} onOpenChange={setIsDeadlineOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
