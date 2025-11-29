@@ -285,6 +285,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
 
       const budgetData: Omit<Budget, 'id'> = {
         ...values,
+        clientId: values.clientId, // Ensure clientId is included
         total: finalTotal,
         materialCost: materialCost,
         profit: profit,
