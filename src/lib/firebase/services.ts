@@ -1,14 +1,14 @@
 'use client';
 import { collection, Firestore, Timestamp, doc, updateDoc, arrayUnion, getDoc, arrayRemove } from 'firebase/firestore';
 import { addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { Budget, Payment } from '@/lib/types';
+import { Budget, Payment, ServiceType } from '@/lib/types';
 
-function convertDatesToTimestamps(data: any): any {
+function prepareBudgetDataForSave(data: any): any {
     const dataToSave = { ...data };
 
     // Safely convert dates, only if they exist and are Date objects
     if (dataToSave.period?.from instanceof Date) {
-        dataToSave.period.from = Timestamp.fromDate(dataToToSave.period.from);
+        dataToSave.period.from = Timestamp.fromDate(dataToSave.period.from);
     }
     if (dataToSave.period?.to instanceof Date) {
         dataToSave.period.to = Timestamp.fromDate(dataToSave.period.to);
@@ -16,23 +16,41 @@ function convertDatesToTimestamps(data: any): any {
     if (dataToSave.deadline instanceof Date) {
         dataToSave.deadline = Timestamp.fromDate(dataToSave.deadline);
     }
+    
     // Always convert registrationDate as it's required
     if (dataToSave.registrationDate instanceof Date) {
         dataToSave.registrationDate = Timestamp.fromDate(dataToSave.registrationDate);
     } else if (!dataToSave.registrationDate) {
-        // Fallback if it's somehow missing, to avoid silent errors
         dataToSave.registrationDate = Timestamp.now();
     }
 
+    // Conditionally include fields based on serviceType
+    if (dataToSave.serviceType !== 'Pintura') {
+        delete dataToSave.wallWidth;
+        delete dataToSave.wallHeight;
+        delete dataToSave.sqMetersPrice;
+        delete dataToSave.paintCoats;
+    }
 
-    // Ensure electricalItems and hydraulicItems are arrays, even if empty
-    if (!Array.isArray(dataToSave.electricalItems)) {
+    if (dataToSave.serviceType !== 'Elétrica') {
         dataToSave.electricalItems = [];
+    } else {
+        dataToSave.electricalItems = dataToSave.electricalItems || [];
     }
-    if (!Array.isArray(dataToSave.hydraulicItems)) {
+
+    if (dataToSave.serviceType !== 'Hidráulica') {
         dataToSave.hydraulicItems = [];
+    } else {
+        dataToSave.hydraulicItems = dataToSave.hydraulicItems || [];
     }
-    
+
+    // Remove undefined fields that might cause issues
+    Object.keys(dataToSave).forEach(key => {
+        if (dataToSave[key] === undefined) {
+            delete dataToSave[key];
+        }
+    });
+
     return dataToSave;
 }
 
@@ -42,7 +60,7 @@ export async function saveBudget(firestore: Firestore, userId: string, budgetDat
         throw new Error("User ID is required to save a budget.");
     }
     
-    const dataToSave = convertDatesToTimestamps(budgetData);
+    const dataToSave = prepareBudgetDataForSave(budgetData);
 
     if (budgetId) {
         const budgetDoc = doc(firestore, 'users', userId, 'budgets', budgetId);
