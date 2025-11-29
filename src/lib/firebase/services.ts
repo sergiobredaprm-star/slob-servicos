@@ -1,5 +1,5 @@
 'use client';
-import { collection, Firestore, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, Firestore, Timestamp, doc, updateDoc, arrayUnion, getDoc, arrayRemove } from 'firebase/firestore';
 import { addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { Budget, Payment } from '@/lib/types';
 
@@ -8,7 +8,7 @@ function convertDatesToTimestamps(data: any): any {
 
     // Safely convert dates, only if they exist and are Date objects
     if (dataToSave.period?.from instanceof Date) {
-        dataToSave.period.from = Timestamp.fromDate(dataToSave.period.from);
+        dataToSave.period.from = Timestamp.fromDate(dataToToSave.period.from);
     }
     if (dataToSave.period?.to instanceof Date) {
         dataToSave.period.to = Timestamp.fromDate(dataToSave.period.to);
@@ -68,7 +68,7 @@ export async function addPaymentToBudget(firestore: Firestore, userId: string, b
     const budgetDocRef = doc(firestore, 'users', userId, 'budgets', budgetId);
     const paymentWithId = { 
         ...payment,
-        id: new Date().toISOString(), // Simple unique ID
+        id: new Date().toISOString() + Math.random(), // Simple unique ID
         date: Timestamp.fromDate(payment.date as Date) 
     };
 
@@ -76,5 +76,67 @@ export async function addPaymentToBudget(firestore: Firestore, userId: string, b
     // to give feedback to the user. This is a user-interactive action.
     await updateDoc(budgetDocRef, {
         paymentHistory: arrayUnion(paymentWithId)
+    });
+}
+
+export async function updatePaymentInBudget(firestore: Firestore, userId: string, budgetId: string, updatedPayment: Payment) {
+    if (!userId || !budgetId || !updatedPayment.id) {
+        throw new Error("User ID, Budget ID, and Payment ID are required.");
+    }
+    const budgetDocRef = doc(firestore, 'users', userId, 'budgets', budgetId);
+    
+    // Convert date to timestamp for storing in Firestore
+    const paymentToStore = {
+        ...updatedPayment,
+        date: Timestamp.fromDate(updatedPayment.date as Date),
+    };
+
+    const budgetDoc = await getDoc(budgetDocRef);
+    if (!budgetDoc.exists()) {
+        throw new Error("Budget not found.");
+    }
+
+    const budget = budgetDoc.data() as Budget;
+    const paymentHistory = budget.paymentHistory || [];
+    
+    const paymentIndex = paymentHistory.findIndex(p => p.id === updatedPayment.id);
+    if (paymentIndex === -1) {
+        throw new Error("Payment not found in history.");
+    }
+
+    // Create a new array with the updated payment
+    const newPaymentHistory = [...paymentHistory];
+    newPaymentHistory[paymentIndex] = paymentToStore;
+    
+    // Update the document with the new payment history array
+    await updateDoc(budgetDocRef, {
+        paymentHistory: newPaymentHistory
+    });
+}
+
+export async function deletePaymentFromBudget(firestore: Firestore, userId: string, budgetId: string, paymentToDelete: Payment) {
+    if (!userId || !budgetId || !paymentToDelete.id) {
+        throw new Error("User ID, Budget ID, and Payment ID are required.");
+    }
+    const budgetDocRef = doc(firestore, 'users', userId, 'budgets', budgetId);
+    
+    // The payment object from the client might have a JS Date, but in Firestore it's a Timestamp.
+    // We need to fetch the document to get the exact object to remove.
+    const budgetDoc = await getDoc(budgetDocRef);
+    if (!budgetDoc.exists()) {
+        throw new Error("Budget not found.");
+    }
+    const budget = budgetDoc.data() as Budget;
+    const paymentHistory = budget.paymentHistory || [];
+    
+    const paymentToRemove = paymentHistory.find(p => p.id === paymentToDelete.id);
+
+    if (!paymentToRemove) {
+      console.warn("Payment to delete not found in the budget's history. It might have been already deleted.");
+      return; // Exit if not found
+    }
+
+    await updateDoc(budgetDocRef, {
+        paymentHistory: arrayRemove(paymentToRemove)
     });
 }

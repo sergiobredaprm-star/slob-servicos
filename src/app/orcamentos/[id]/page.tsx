@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Trash2, MoreHorizontal, Edit } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
   Table,
@@ -28,6 +28,24 @@ import {
 import { AddPaymentDialog } from '@/components/app/budget/add-payment-dialog';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { deletePaymentFromBudget } from '@/lib/firebase/services';
+import { useToast } from '@/hooks/use-toast';
 
 const statusStyles: { [key in BudgetStatus]: string } = {
   prospecção: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
@@ -54,7 +72,13 @@ export default function BudgetDetailsPage() {
   const router = useRouter();
   const { id } = params;
   const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
+
 
   const budgetDocRef = useMemoFirebase(
     () =>
@@ -75,6 +99,47 @@ export default function BudgetDetailsPage() {
     const paymentPercentage = budget.total > 0 ? (totalPaid / budget.total) * 100 : 0;
     return { totalPaid, remainingBalance, paymentPercentage };
   }, [budget]);
+
+  const handleAddPayment = () => {
+    setSelectedPayment(null);
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handleEditPayment = (payment: Payment) => {
+    const paymentWithDate = {
+      ...payment,
+      date: (payment.date as Timestamp).toDate(),
+    }
+    setSelectedPayment(paymentWithDate);
+    setIsPaymentDialogOpen(true);
+  };
+  
+  const handleDeletePayment = (payment: Payment) => {
+    setPaymentToDelete(payment);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const confirmDeletePayment = async () => {
+    if (!user || !firestore || !paymentToDelete || !id) return;
+
+    try {
+      await deletePaymentFromBudget(firestore, user.uid, id as string, paymentToDelete);
+      toast({
+        title: "Pagamento Removido",
+        description: "O pagamento foi removido do histórico.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível remover o pagamento.",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setPaymentToDelete(null);
+    }
+  };
+
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Carregando detalhes...</div>;
@@ -188,7 +253,7 @@ export default function BudgetDetailsPage() {
                 <div>
                   <div className="flex justify-between items-center mb-4">
                       <h3 className="text-lg font-semibold font-headline">Pagamentos</h3>
-                      <Button size="sm" onClick={() => setIsPaymentDialogOpen(true)}>
+                      <Button size="sm" onClick={handleAddPayment}>
                           <PlusCircle className="mr-2 h-4 w-4" />
                           Adicionar Pagamento
                       </Button>
@@ -236,6 +301,7 @@ export default function BudgetDetailsPage() {
                                           <TableHead>Data</TableHead>
                                           <TableHead>Valor</TableHead>
                                           <TableHead>Observações</TableHead>
+                                          <TableHead><span className="sr-only">Ações</span></TableHead>
                                       </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -245,11 +311,34 @@ export default function BudgetDetailsPage() {
                                                   <TableCell>{formatDate(p.date)}</TableCell>
                                                   <TableCell>{formatCurrency(p.amount)}</TableCell>
                                                   <TableCell>{p.notes || '-'}</TableCell>
+                                                  <TableCell className="text-right">
+                                                      <DropdownMenu>
+                                                          <DropdownMenuTrigger asChild>
+                                                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                  <span className="sr-only">Abrir menu</span>
+                                                                  <MoreHorizontal className="h-4 w-4" />
+                                                              </Button>
+                                                          </DropdownMenuTrigger>
+                                                          <DropdownMenuContent align="end">
+                                                              <DropdownMenuItem onClick={() => handleEditPayment(p)}>
+                                                                  <Edit className="mr-2 h-4 w-4" />
+                                                                  Editar
+                                                              </DropdownMenuItem>
+                                                              <DropdownMenuItem
+                                                                  className="text-destructive"
+                                                                  onClick={() => handleDeletePayment(p)}
+                                                              >
+                                                                  <Trash2 className="mr-2 h-4 w-4" />
+                                                                  Excluir
+                                                              </DropdownMenuItem>
+                                                          </DropdownMenuContent>
+                                                      </DropdownMenu>
+                                                  </TableCell>
                                               </TableRow>
                                           ))
                                       ) : (
                                           <TableRow>
-                                              <TableCell colSpan={3} className="text-center">
+                                              <TableCell colSpan={4} className="text-center">
                                                   Nenhum pagamento registrado.
                                               </TableCell>
                                           </TableRow>
@@ -268,7 +357,22 @@ export default function BudgetDetailsPage() {
             onOpenChange={setIsPaymentDialogOpen}
             budgetId={id as string}
             maxAmount={remainingBalance}
+            paymentToEdit={selectedPayment}
         />
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Tem certeza que deseja excluir este pagamento? Esta ação não poderá ser desfeita.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmDeletePayment}>Excluir</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }

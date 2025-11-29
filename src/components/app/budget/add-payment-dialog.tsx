@@ -1,5 +1,5 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,7 +30,8 @@ import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { addPaymentToBudget } from '@/lib/firebase/services';
+import { addPaymentToBudget, updatePaymentInBudget } from '@/lib/firebase/services';
+import { Payment } from '@/lib/types';
 
 const paymentSchema = z.object({
   amount: z.coerce
@@ -45,6 +46,7 @@ type AddPaymentDialogProps = {
   onOpenChange: (open: boolean) => void;
   budgetId: string;
   maxAmount: number;
+  paymentToEdit?: Payment | null;
 };
 
 export function AddPaymentDialog({
@@ -52,59 +54,90 @@ export function AddPaymentDialog({
   onOpenChange,
   budgetId,
   maxAmount,
+  paymentToEdit,
 }: AddPaymentDialogProps) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
+  const isEditing = !!paymentToEdit;
+  
+  const validationSchema = paymentSchema.refine(data => data.amount <= maxAmount + (isEditing ? paymentToEdit.amount : 0), {
+    message: `O valor não pode ser maior que o saldo devedor.`,
+    path: ['amount'],
+  });
+
   const form = useForm<z.infer<typeof paymentSchema>>({
-    resolver: zodResolver(paymentSchema.refine(data => data.amount <= maxAmount, {
-        message: `O valor não pode ser maior que o saldo devedor de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(maxAmount)}.`,
-        path: ['amount'],
-    })),
+    resolver: zodResolver(validationSchema),
     defaultValues: {
-      amount: '' as any, // Use empty string to avoid uncontrolled input error
+      amount: '' as any,
       date: new Date(),
       notes: '',
     },
   });
+
+  useEffect(() => {
+    if (paymentToEdit && isOpen) {
+      form.reset({
+        amount: paymentToEdit.amount,
+        date: paymentToEdit.date instanceof Date ? paymentToEdit.date : new Date(),
+        notes: paymentToEdit.notes || '',
+      });
+    } else if (!isOpen) {
+       form.reset({
+        amount: '' as any,
+        date: new Date(),
+        notes: '',
+      });
+    }
+  }, [paymentToEdit, isOpen, form]);
 
   const onSubmit = (values: z.infer<typeof paymentSchema>) => {
     if (!user || !firestore) return;
 
     startTransition(async () => {
       try {
-        await addPaymentToBudget(firestore, user.uid, budgetId, values);
-        toast({
-          title: 'Pagamento Adicionado!',
-          description: 'O novo pagamento foi registrado com sucesso.',
-        });
+        if (isEditing && paymentToEdit) {
+            const updatedPayment = { ...paymentToEdit, ...values };
+            await updatePaymentInBudget(firestore, user.uid, budgetId, updatedPayment);
+            toast({
+              title: 'Pagamento Atualizado!',
+              description: 'O pagamento foi atualizado com sucesso.',
+            });
+        } else {
+            await addPaymentToBudget(firestore, user.uid, budgetId, values);
+            toast({
+              title: 'Pagamento Adicionado!',
+              description: 'O novo pagamento foi registrado com sucesso.',
+            });
+        }
+        
         onOpenChange(false);
-        form.reset();
       } catch (error) {
         console.error(error);
         toast({
           variant: 'destructive',
           title: 'Erro',
-          description: 'Não foi possível adicionar o pagamento.',
+          description: `Não foi possível ${isEditing ? 'atualizar' : 'adicionar'} o pagamento.`,
         });
       }
     });
   };
   
   const handlePayTotal = () => {
-    const roundedMaxAmount = parseFloat(maxAmount.toFixed(2));
-    form.setValue('amount', roundedMaxAmount, { shouldValidate: true });
+    const totalPayable = isEditing ? maxAmount + paymentToEdit.amount : maxAmount;
+    const roundedTotalAmount = parseFloat(totalPayable.toFixed(2));
+    form.setValue('amount', roundedTotalAmount, { shouldValidate: true });
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adicionar Pagamento</DialogTitle>
+          <DialogTitle>{isEditing ? 'Editar Pagamento' : 'Adicionar Pagamento'}</DialogTitle>
           <DialogDescription>
-            Registre um novo pagamento para este orçamento.
+            {isEditing ? 'Atualize os detalhes do pagamento.' : 'Registre um novo pagamento para este orçamento.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -193,7 +226,7 @@ export function AddPaymentDialog({
               </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Pagamento
+                {isEditing ? 'Salvar Alterações' : 'Salvar Pagamento'}
               </Button>
             </DialogFooter>
           </form>
