@@ -147,7 +147,7 @@ export default function ClientDetailsPage() {
                             </a>
                         </Button>
                         <Button asChild variant="outline">
-                             <a href={`https://wa.me/${cleanPhoneNumber(client.contactPhone)}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer">
+                             <a href={`https://wa.me/55${cleanPhoneNumber(client.contactPhone)}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer">
                                <WhatsappIcon className="mr-2 h-4 w-4" />
                                 WhatsApp
                             </a>
