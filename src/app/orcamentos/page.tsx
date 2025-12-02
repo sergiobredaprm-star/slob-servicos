@@ -30,7 +30,7 @@ import {
 import Link from 'next/link';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useSearchParams } from 'next/navigation';
 
 
 const statusStyles: { [key in BudgetStatus]: string } = {
@@ -79,15 +80,24 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-export default function OrcamentosPage() {
+function OrcamentosPageComponent() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
   const [clientFilter, setClientFilter] = useState<string | null>(null);
   const [taskFilter, setTaskFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<BudgetStatus | null>(null);
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
+
+  useEffect(() => {
+    const statusFromUrl = searchParams.get('status');
+    if (statusFromUrl && ['prospecção', 'ativo', 'concluído', 'cancelado'].includes(statusFromUrl)) {
+      setStatusFilter(statusFromUrl as BudgetStatus);
+    }
+  }, [searchParams]);
 
   const budgetsQuery = useMemoFirebase(() => 
     user && firestore ? query(collection(firestore, 'users', user.uid, 'budgets')) : null
@@ -396,4 +406,10 @@ export default function OrcamentosPage() {
   );
 }
 
-    
+export default function OrcamentosPage() {
+  return (
+    <Suspense fallback={<div>Carregando filtros...</div>}>
+      <OrcamentosPageComponent />
+    </Suspense>
+  )
+}

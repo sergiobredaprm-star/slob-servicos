@@ -8,6 +8,8 @@ import {
 import { DollarSign, CheckCircle2, Hourglass, XCircle, Search, PiggyBank } from 'lucide-react';
 import { useMemo } from 'react';
 import { Budget } from '@/lib/types';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -19,6 +21,12 @@ const formatCurrency = (value: number) => {
 type StatsCardsProps = {
   budgets: Budget[] | null | undefined;
 };
+
+const CardLink = ({ href, children, className }: { href: string, children: React.ReactNode, className?: string }) => (
+    <Link href={href} className={cn("block hover:scale-[1.02] transition-transform", className)}>
+        {children}
+    </Link>
+)
 
 export function StatsCards({ budgets }: StatsCardsProps) {
   const financialSummary = useMemo(() => {
@@ -70,90 +78,102 @@ export function StatsCards({ budgets }: StatsCardsProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Orçado</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {formatCurrency(financialSummary.totalOrcado)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Soma de todos os orçamentos
-          </p>
-        </CardContent>
-      </Card>
-       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Em Prospecção</CardTitle>
-          <Search className="h-4 w-4 text-gray-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {formatCurrency(financialSummary.totalEmProspeccao)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Aguardando confirmação
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Lucro Total</CardTitle>
-          <PiggyBank className="h-4 w-4 text-emerald-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {formatCurrency(financialSummary.lucroTotal)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Soma dos lucros de projetos
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Recebido</CardTitle>
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {formatCurrency(financialSummary.totalRecebido)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Soma de todos os pagamentos
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Pendente</CardTitle>
-          <Hourglass className="h-4 w-4 text-blue-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {formatCurrency(financialSummary.totalPendente)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Saldo devedor de orçamentos
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Cancelado</CardTitle>
-          <XCircle className="h-4 w-4 text-red-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {formatCurrency(financialSummary.totalCancelado)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Orçamentos cancelados
-          </p>
-        </CardContent>
-      </Card>
+      <CardLink href="/orcamentos">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Orçado</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(financialSummary.totalOrcado)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Soma de todos os orçamentos
+            </p>
+          </CardContent>
+        </Card>
+      </CardLink>
+       <CardLink href="/orcamentos?status=prospecção">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Em Prospecção</CardTitle>
+            <Search className="h-4 w-4 text-gray-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(financialSummary.totalEmProspeccao)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Aguardando confirmação
+            </p>
+          </CardContent>
+        </Card>
+       </CardLink>
+       <CardLink href="/orcamentos?status=ativo">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Lucro Total</CardTitle>
+            <PiggyBank className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(financialSummary.lucroTotal)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Soma dos lucros de projetos
+            </p>
+          </CardContent>
+        </Card>
+       </CardLink>
+       <CardLink href="/orcamentos?status=concluído">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Recebido</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(financialSummary.totalRecebido)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Soma de todos os pagamentos
+            </p>
+          </CardContent>
+        </Card>
+       </CardLink>
+       <CardLink href="/orcamentos?status=ativo">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pendente</CardTitle>
+            <Hourglass className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(financialSummary.totalPendente)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Saldo devedor de orçamentos
+            </p>
+          </CardContent>
+        </Card>
+       </CardLink>
+       <CardLink href="/orcamentos?status=cancelado">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Cancelado</CardTitle>
+            <XCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(financialSummary.totalCancelado)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Orçamentos cancelados
+            </p>
+          </CardContent>
+        </Card>
+       </CardLink>
     </div>
   );
 }
