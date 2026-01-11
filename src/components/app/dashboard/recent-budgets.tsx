@@ -13,10 +13,10 @@ type RecentBudgetsProps = {
   budgets: Budget[] | null | undefined;
 };
 
-export function RecentBudgets({ budgets: filteredBudgets }: RecentBudgetsProps) {
+export function RecentBudgets({ budgets }: RecentBudgetsProps) {
   const sortedBudgets = useMemo(() => {
-    if (!filteredBudgets) return [];
-    return [...filteredBudgets]
+    if (!budgets) return [];
+    return [...budgets]
       .filter(b => b.registrationDate) // Garante que o orçamento tenha data de registro
       .sort((a, b) => {
         const dateA = (a.registrationDate as any).toDate
@@ -28,9 +28,9 @@ export function RecentBudgets({ budgets: filteredBudgets }: RecentBudgetsProps) 
         return dateB.getTime() - dateA.getTime();
       })
       .slice(0, 5);
-  }, [filteredBudgets]);
+  }, [budgets]);
 
-  if (!filteredBudgets) {
+  if (!budgets) {
     return <div>Carregando orçamentos...</div>;
   }
 
@@ -51,7 +51,7 @@ export function RecentBudgets({ budgets: filteredBudgets }: RecentBudgetsProps) 
       ))}
       {sortedBudgets.length === 0 && (
         <p className="text-sm text-muted-foreground text-center">
-          Nenhum orçamento para o período selecionado.
+          Nenhum orçamento recente para exibir.
         </p>
       )}
     </div>

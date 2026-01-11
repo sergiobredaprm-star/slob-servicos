@@ -13,27 +13,16 @@ import { StatsCards } from '@/components/app/dashboard/stats-cards';
 import { Overview } from '@/components/app/dashboard/overview';
 import { RecentBudgets } from '@/components/app/dashboard/recent-budgets';
 import Link from 'next/link';
-import { CalendarIcon, PlusCircle } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { ReportsTab } from '@/components/app/dashboard/reports-tab';
 import { StatusDistributionChart } from '@/components/app/dashboard/status-distribution-chart';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Budget } from '@/lib/types';
 import { collection, query, Timestamp } from 'firebase/firestore';
-import { useState, useMemo } from 'react';
-import { format, addDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { DateRange } from 'react-day-picker';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
-
+import { useMemo } from 'react';
 
 export default function DashboardPage() {
   const { firestore, user } = useFirebase();
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: addDays(new Date(), -30),
-    to: new Date(),
-  });
 
   const budgetsQuery = useMemoFirebase(
     () =>
@@ -45,19 +34,9 @@ export default function DashboardPage() {
 
   const { data: allBudgets } = useCollection<Budget>(budgetsQuery);
 
-  const filteredBudgets = useMemo(() => {
-    if (!allBudgets) return [];
-    if (!date?.from) return allBudgets; // Return all if no start date
-
-    const from = date.from;
-    const to = date.to || from; // If no 'to', use 'from'
-
-    return allBudgets.filter((budget) => {
-      if (!budget.registrationDate) return false;
-      const registrationDate = (budget.registrationDate as Timestamp).toDate();
-      return registrationDate >= from && registrationDate <= addDays(to, 1); // include the end day
-    });
-  }, [allBudgets, date]);
+  // For this example, we'll just use all budgets for the charts and stats.
+  // In a real app, you'd likely add date range filters.
+  const filteredBudgets = allBudgets;
 
   return (
     <div className="flex-1 space-y-4">
@@ -66,43 +45,6 @@ export default function DashboardPage() {
           Painel
         </h1>
         <div className="flex items-center space-x-2">
-           <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="date"
-                variant={'outline'}
-                className={cn(
-                  'w-[260px] justify-start text-left font-normal',
-                  !date && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date?.from ? (
-                  date.to ? (
-                    <>
-                      {format(date.from, 'LLL dd, y', { locale: ptBR })} -{' '}
-                      {format(date.to, 'LLL dd, y', { locale: ptBR })}
-                    </>
-                  ) : (
-                    format(date.from, 'LLL dd, y', { locale: ptBR })
-                  )
-                ) : (
-                  <span>Escolha um período</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={setDate}
-                numberOfMonths={2}
-                locale={ptBR}
-              />
-            </PopoverContent>
-          </Popover>
           <Button asChild>
             <Link href="/orcamentos/novo">
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -124,11 +66,11 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Orçamentos</CardTitle>
                 <CardDescription>
-                  Visão geral dos seus orçamentos no período selecionado.
+                  Visão geral dos seus orçamentos no último ano.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Overview budgets={filteredBudgets} dateRange={date} />
+                <Overview budgets={filteredBudgets} />
               </CardContent>
             </Card>
             <Card className="col-span-4 lg:col-span-3">
@@ -137,7 +79,7 @@ export default function DashboardPage() {
                 <CardDescription>
                     {`Você tem ${
                         filteredBudgets?.length || 0
-                      } orçamentos para o período selecionado.`}
+                      } orçamentos registrados no total.`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
