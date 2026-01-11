@@ -13,26 +13,27 @@ import { StatsCards } from '@/components/app/dashboard/stats-cards';
 import { Overview } from '@/components/app/dashboard/overview';
 import { RecentBudgets } from '@/components/app/dashboard/recent-budgets';
 import Link from 'next/link';
-import { PlusCircle } from 'lucide-react';
+import { CalendarIcon, PlusCircle } from 'lucide-react';
 import { ReportsTab } from '@/components/app/dashboard/reports-tab';
 import { StatusDistributionChart } from '@/components/app/dashboard/status-distribution-chart';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Budget } from '@/lib/types';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, Timestamp } from 'firebase/firestore';
 import { useState, useMemo } from 'react';
-import { format, getMonth, getYear } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { DateRange } from 'react-day-picker';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+
 
 export default function DashboardPage() {
   const { firestore, user } = useFirebase();
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: addDays(new Date(), -30),
+    to: new Date(),
+  });
 
   const budgetsQuery = useMemoFirebase(
     () =>
@@ -44,44 +45,19 @@ export default function DashboardPage() {
 
   const { data: allBudgets } = useCollection<Budget>(budgetsQuery);
 
-  const availableMonths = useMemo(() => {
-    if (!allBudgets) return [];
-    const months = new Set<string>();
-    allBudgets.forEach((budget) => {
-      if (budget.registrationDate) {
-        const date = (budget.registrationDate as any).toDate
-          ? (budget.registrationDate as any).toDate()
-          : new Date(budget.registrationDate);
-        const monthKey = `${getYear(date)}-${getMonth(date)}`;
-        months.add(monthKey);
-      }
-    });
-    return Array.from(months)
-      .map((monthKey) => {
-        const [year, month] = monthKey.split('-');
-        const date = new Date(Number(year), Number(month));
-        return {
-          value: monthKey,
-          label: format(date, 'MMMM yyyy', { locale: ptBR }),
-        };
-      })
-      .sort((a, b) => b.value.localeCompare(a.value));
-  }, [allBudgets]);
-
   const filteredBudgets = useMemo(() => {
     if (!allBudgets) return [];
-    if (selectedMonth === 'all') {
-      return allBudgets;
-    }
+    if (!date?.from) return allBudgets; // Return all if no start date
+
+    const from = date.from;
+    const to = date.to || from; // If no 'to', use 'from'
+
     return allBudgets.filter((budget) => {
       if (!budget.registrationDate) return false;
-      const date = (budget.registrationDate as any).toDate
-        ? (budget.registrationDate as any).toDate()
-        : new Date(budget.registrationDate);
-      const monthKey = `${getYear(date)}-${getMonth(date)}`;
-      return monthKey === selectedMonth;
+      const registrationDate = (budget.registrationDate as Timestamp).toDate();
+      return registrationDate >= from && registrationDate <= addDays(to, 1); // include the end day
     });
-  }, [allBudgets, selectedMonth]);
+  }, [allBudgets, date]);
 
   return (
     <div className="flex-1 space-y-4">
@@ -90,19 +66,43 @@ export default function DashboardPage() {
           Painel
         </h1>
         <div className="flex items-center space-x-2">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar por mês" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Meses</SelectItem>
-              {availableMonths.map((month) => (
-                <SelectItem key={month.value} value={month.value}>
-                  {month.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+           <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="date"
+                variant={'outline'}
+                className={cn(
+                  'w-[260px] justify-start text-left font-normal',
+                  !date && 'text-muted-foreground'
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, 'LLL dd, y', { locale: ptBR })} -{' '}
+                      {format(date.to, 'LLL dd, y', { locale: ptBR })}
+                    </>
+                  ) : (
+                    format(date.from, 'LLL dd, y', { locale: ptBR })
+                  )
+                ) : (
+                  <span>Escolha um período</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+                locale={ptBR}
+              />
+            </PopoverContent>
+          </Popover>
           <Button asChild>
             <Link href="/orcamentos/novo">
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -124,24 +124,20 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Orçamentos</CardTitle>
                 <CardDescription>
-                  Visão geral dos seus orçamentos.
+                  Visão geral dos seus orçamentos no período selecionado.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Overview budgets={allBudgets} selectedMonth={selectedMonth} />
+                <Overview budgets={filteredBudgets} dateRange={date} />
               </CardContent>
             </Card>
             <Card className="col-span-4 lg:col-span-3">
               <CardHeader>
                 <CardTitle>Orçamentos Recentes</CardTitle>
                 <CardDescription>
-                  {selectedMonth === 'all'
-                    ? `Você tem ${
+                    {`Você tem ${
                         filteredBudgets?.length || 0
-                      } orçamentos no total.`
-                    : `Você tem ${
-                        filteredBudgets?.length || 0
-                      } orçamentos para o mês selecionado.`}
+                      } orçamentos para o período selecionado.`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
