@@ -150,6 +150,22 @@
       },
       "required": ["name", "defaultValue", "userId"]
     },
+    "ServiceTypeItem": {
+      "title": "Service Type Item",
+      "type": "object",
+      "description": "Represents a custom service type defined by the user.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the service type (e.g., 'Marcenaria')."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this service type."
+        }
+      },
+      "required": ["name", "userId"]
+    },
     "Budget": {
       "title": "Budget",
       "type": "object",
@@ -379,6 +395,10 @@
     "/users/{userId}/hydraulicServiceItems/{itemId}": {
       "schema": { "$ref": "#/entities/HydraulicServiceItem" },
       "description": "Sub-collection for predefined hydraulic service items for a specific user."
+    },
+    "/users/{userId}/serviceTypes/{serviceTypeId}": {
+      "schema": { "$ref": "#/entities/ServiceTypeItem" },
+      "description": "Sub-collection for custom service types for a specific user."
     }
   }
 }

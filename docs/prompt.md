@@ -55,6 +55,7 @@ O sistema permite que o usuário crie orçamentos detalhados, acompanhe o status
 - **Perfil de Usuário:** O usuário pode atualizar seu nome de exibição e foto de perfil. A foto é enviada para o Firebase Storage e o usuário pode escolher entre imagens já enviadas de uma galeria.
 - **Dados da Empresa:** O usuário pode salvar as informações da sua empresa (nome, CNPJ, contato), que são usadas nos relatórios em PDF.
 - **Itens de Serviço:** O usuário pode pré-cadastrar itens e seus preços padrão para os serviços de "Elétrica" e "Hidráulica", agilizando a criação de novos orçamentos.
+- **Tipos de Serviço:** O usuário pode cadastrar novos tipos de serviço (ex: 'Marcenaria', 'Jardinagem') que estarão disponíveis ao criar um novo orçamento.
 - **Configuração de Diária:** Permite definir valores padrão para a jornada de trabalho e o valor da diária.
 
 ---
@@ -69,6 +70,7 @@ O banco de dados é estruturado em sub-coleções dentro do documento de cada us
 - `/users/{userId}/companyProfile/{profileId}`: Documento único (ou o primeiro da coleção) com os dados da empresa do usuário.
 - `/users/{userId}/electricalServiceItems/{itemId}`: Itens de serviço de elétrica pré-cadastrados pelo usuário.
 - `/users/{userId}/hydraulicServiceItems/{itemId}`: Itens de serviço de hidráulica pré-cadastrados pelo usuário.
+- `/users/{userId}/serviceTypes/{serviceTypeId}`: Tipos de serviço personalizados pelo usuário.
 
 ### Regras de Segurança
 

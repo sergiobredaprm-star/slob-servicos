@@ -44,7 +44,7 @@ import { getTaskSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Budget, Client, ServiceType, ElectricalItem, ElectricalServiceItem, HydraulicItem, HydraulicServiceItem } from '@/lib/types';
+import { Budget, Client, ServiceType, ElectricalItem, ElectricalServiceItem, HydraulicItem, HydraulicServiceItem, ServiceTypeItem } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { saveBudget } from '@/lib/firebase/services';
@@ -56,8 +56,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { collection, query } from 'firebase/firestore';
-
-const serviceTypes: ServiceType[] = ['Pintura', 'Elétrica', 'Hidráulica', 'Alvenaria', 'Outro'];
 
 const electricalItemSchema = z.object({
   name: z.string(),
@@ -175,6 +173,20 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
 
   const { data: hydraulicServiceItems, isLoading: isLoadingHydraulicItems } = useCollection<HydraulicServiceItem>(hydraulicItemsQuery);
 
+  const serviceTypesQuery = useMemoFirebase(
+    () => user && firestore ? query(collection(firestore, 'users', user.uid, 'serviceTypes')) : null,
+    [firestore, user]
+  );
+  const { data: customServiceTypes, isLoading: isLoadingServiceTypes } = useCollection<ServiceTypeItem>(serviceTypesQuery);
+
+  const allServiceTypes = useMemo(() => {
+      const defaultTypes: ServiceType[] = ['Pintura', 'Elétrica', 'Hidráulica', 'Alvenaria', 'Outro'];
+      if (!customServiceTypes) {
+          return defaultTypes;
+      }
+      const customTypes = customServiceTypes.map(item => item.name);
+      return [...new Set([...defaultTypes, ...customTypes])];
+  }, [customServiceTypes]);
 
   const sortedClients = useMemo(() => {
     if (!clients) return [];
@@ -531,11 +543,11 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo de serviço" />
+                    <SelectValue placeholder={isLoadingServiceTypes ? "Carregando..." : "Selecione o tipo de serviço"} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {serviceTypes.map(type => (
+                  {allServiceTypes.map(type => (
                     <SelectItem key={type} value={type}>{type}</SelectItem>
                   ))}
                 </SelectContent>

@@ -23,12 +23,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { settings } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { CompanyProfile, ElectricalServiceItem, HydraulicServiceItem } from '@/lib/types';
+import { CompanyProfile, ElectricalServiceItem, HydraulicServiceItem, ServiceTypeItem } from '@/lib/types';
 import { useEffect, useState, useTransition, useRef } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { getCompanyProfile, saveCompanyProfile } from '@/lib/firebase/company-services';
 import { saveElectricalItem, deleteElectricalItem } from '@/lib/firebase/electrical-item-services';
 import { saveHydraulicItem, deleteHydraulicItem } from '@/lib/firebase/hydraulic-item-services';
+import { saveServiceType, deleteServiceType } from '@/lib/firebase/service-type-services';
 import { Loader2, Trash2, PlusCircle, Upload, Save } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
@@ -86,8 +87,18 @@ const hydraulicItemsFormSchema = z.object({
   items: z.array(hydraulicItemSchema),
 });
 
+const serviceTypeItemSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(2, 'O nome do serviço deve ter pelo menos 2 caracteres.'),
+});
+
+const serviceTypesFormSchema = z.object({
+  items: z.array(serviceTypeItemSchema),
+});
+
 type ElectricalItemsFormData = z.infer<typeof electricalItemsFormSchema>;
 type HydraulicItemsFormData = z.infer<typeof hydraulicItemsFormSchema>;
+type ServiceTypesFormData = z.infer<typeof serviceTypesFormSchema>;
 
 
 export default function SettingsPage() {
@@ -98,6 +109,7 @@ export default function SettingsPage() {
   const [isUserSubmitPending, startUserSubmitTransition] = useTransition();
   const [isElectricalSubmitPending, startElectricalSubmitTransition] = useTransition();
   const [isHydraulicSubmitPending, startHydraulicSubmitTransition] = useTransition();
+  const [isServiceTypeSubmitPending, startServiceTypeSubmitTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
@@ -179,6 +191,31 @@ export default function SettingsPage() {
       hydraulicReplace(hydraulicItems);
     }
   }, [hydraulicItems, hydraulicReplace]);
+
+  const serviceTypesQuery = useMemoFirebase(
+    () => user && firestore ? query(collection(firestore, 'users', user.uid, 'serviceTypes')) : null,
+    [firestore, user]
+  );
+
+  const { data: serviceTypes, isLoading: isLoadingServiceTypes } = useCollection<ServiceTypeItem>(serviceTypesQuery);
+
+  const serviceTypesForm = useForm<ServiceTypesFormData>({
+    resolver: zodResolver(serviceTypesFormSchema),
+    defaultValues: {
+      items: [],
+    },
+  });
+
+  const { fields: serviceTypeFields, append: serviceTypeAppend, remove: serviceTypeRemove, replace: serviceTypeReplace } = useFieldArray({
+    control: serviceTypesForm.control,
+    name: 'items',
+  });
+
+  useEffect(() => {
+    if (serviceTypes) {
+      serviceTypeReplace(serviceTypes);
+    }
+  }, [serviceTypes, serviceTypeReplace]);
 
 
   useEffect(() => {
@@ -421,6 +458,53 @@ export default function SettingsPage() {
     hydraulicRemove(index);
   }
 
+  function onServiceTypesSubmit(values: ServiceTypesFormData) {
+    if (!user || !firestore) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
+      return;
+    }
+    startServiceTypeSubmitTransition(async () => {
+      try {
+        await Promise.all(values.items.map(item => {
+          const { id, ...itemData } = item;
+          return saveServiceType(firestore, user.uid, itemData, id);
+        }));
+        
+        toast({
+          title: 'Tipos de Serviço Salvos!',
+          description: 'Sua lista de tipos de serviço foi atualizada.',
+        });
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao Salvar',
+          description: 'Não foi possível salvar os tipos de serviço.',
+        });
+      }
+    });
+  }
+
+  async function handleRemoveServiceType(index: number, itemId?: string) {
+    if (!user || !firestore) return;
+    if (itemId) {
+      try {
+        await deleteServiceType(firestore, user.uid, itemId);
+        toast({
+          title: 'Tipo de Serviço Removido',
+          description: 'O tipo de serviço foi removido da sua lista.',
+        });
+      } catch(e) {
+         toast({
+          variant: 'destructive',
+          title: 'Erro ao Remover',
+          description: 'Não foi possível remover o tipo de serviço.',
+        });
+      }
+    }
+    serviceTypeRemove(index);
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight font-headline">
@@ -431,6 +515,7 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="general">Geral</TabsTrigger>
           <TabsTrigger value="service-items">Itens de Serviço</TabsTrigger>
+          <TabsTrigger value="service-types">Tipos de Serviço</TabsTrigger>
           <TabsTrigger value="daily-rate">Diária</TabsTrigger>
         </TabsList>
         <TabsContent value="general" className="space-y-4">
@@ -823,6 +908,69 @@ export default function SettingsPage() {
                 </Card>
               </AccordionItem>
             </Accordion>
+        </TabsContent>
+        <TabsContent value="service-types">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tipos de Serviço Personalizados</CardTitle>
+              <CardDescription>
+                Adicione ou remova tipos de serviço que aparecerão na criação de orçamentos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+               <Form {...serviceTypesForm}>
+                <form onSubmit={serviceTypesForm.handleSubmit(onServiceTypesSubmit)} className="space-y-6">
+                  {isLoadingServiceTypes ? (
+                    <div className="flex justify-center items-center h-24">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {serviceTypeFields.map((field, index) => (
+                        <div key={field.id} className="flex items-end gap-4">
+                          <FormField
+                            control={serviceTypesForm.control}
+                            name={`items.${index}.name`}
+                            render={({ field }) => (
+                              <FormItem className="flex-grow">
+                                <FormLabel className={cn(index > 0 && 'sr-only')}>Nome do Tipo de Serviço</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Ex: Marcenaria" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => handleRemoveServiceType(index, field.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => serviceTypeAppend({ name: '' })}
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Adicionar Novo Tipo
+                      </Button>
+                    </div>
+                  )}
+
+                  <Button type="submit" disabled={isServiceTypeSubmitPending || isLoadingServiceTypes}>
+                    {isServiceTypeSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Salvar Tipos de Serviço
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
         </TabsContent>
         <TabsContent value="daily-rate">
           <Card>
