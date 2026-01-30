@@ -313,15 +313,16 @@ export default function BudgetDetailsPage() {
     message += '*RESUMO FINANCEIRO*\n';
     message += '---------------------------------\n\n';
 
+    const laborCost = budget.profit || 0; // Profit field now stores labor cost
+    
+    message += `*Valor da Mão de Obra:* ${formatCurrency(laborCost)}\n`;
     if (budget.materialCost && budget.materialCost > 0) {
-      const laborCost = budget.profit || budget.total - budget.materialCost;
-      message += `*Valor da Mão de Obra:* ${formatCurrency(laborCost)}\n`;
       message += `*Custo com Materiais:* ${formatCurrency(
         budget.materialCost
-      )}\n\n`;
+      )}\n`;
     }
 
-    message += `*VALOR TOTAL:* *${formatCurrency(budget.total)}*\n\n`;
+    message += `\n*VALOR TOTAL:* *${formatCurrency(budget.total)}*\n\n`;
     message += `_Este orçamento é válido por 15 dias._\n`;
     if (companyProfile?.companyName) {
       message += `\nAtenciosamente,\n*${companyProfile.companyName}*`;
@@ -473,12 +474,24 @@ export default function BudgetDetailsPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Valor Bruto do Projeto
+                    Valor Total do Projeto
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-xl font-bold">
                     {formatCurrency(budget.total)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Mão de Obra
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xl font-bold text-green-600">
+                    {formatCurrency(budget.profit || 0)}
                   </p>
                 </CardContent>
               </Card>
@@ -491,18 +504,6 @@ export default function BudgetDetailsPage() {
                 <CardContent>
                   <p className="text-xl font-bold text-red-600">
                     {formatCurrency(budget.materialCost || 0)}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Lucro do Projeto
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xl font-bold text-green-600">
-                    {formatCurrency(budget.profit || 0)}
                   </p>
                 </CardContent>
               </Card>
@@ -524,7 +525,7 @@ export default function BudgetDetailsPage() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Valor Total (Líquido)
+                      Valor Total
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

@@ -94,7 +94,7 @@ const dailyBudgetSchema = baseFormSchema.extend({
 
 const taskBudgetSchema = baseFormSchema.extend({
   budgetType: z.literal('task'),
-  total: z.coerce.number().optional(),
+  profit: z.coerce.number().optional(),
   wallWidth: z.coerce.number().optional(),
   wallHeight: z.coerce.number().optional(),
   sqMetersPrice: z.coerce.number().optional(),
@@ -217,7 +217,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
         from: new Date(),
         to: addDays(new Date(), 5),
       },
-      total: 0,
+      profit: 0,
       materialCost: 0,
       status: 'prospecção',
       wallHeight: 0,
@@ -302,35 +302,34 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
     }
 
     startSubmitTransition(async () => {
-      let finalTotal = 0;
+      const materialCost = values.materialCost || 0;
+      let laborCost = 0;
+
       if (values.budgetType === 'daily' && values.period?.from && values.period?.to && values.dailyRate) {
         const workDays = differenceInCalendarDays(values.period.to, values.period.from) + 1;
-        finalTotal = workDays * values.dailyRate;
+        laborCost = workDays * values.dailyRate;
       } else if (values.budgetType === 'task') {
         if (values.serviceType === 'Pintura' && values.wallWidth && values.wallHeight && values.sqMetersPrice && values.paintCoats) {
-          finalTotal = values.wallWidth * values.wallHeight * values.sqMetersPrice * values.paintCoats;
+          laborCost = values.wallWidth * values.wallHeight * values.sqMetersPrice * values.paintCoats;
         } else if (values.serviceType === 'Elétrica' && values.electricalItems) {
-            finalTotal = values.electricalItems.reduce((acc, item) => acc + (item.quantity * item.value), 0);
+          laborCost = values.electricalItems.reduce((acc, item) => acc + (item.quantity * item.value), 0);
         } else if (values.serviceType === 'Hidráulica' && values.hydraulicItems) {
-            finalTotal = values.hydraulicItems.reduce((acc, item) => acc + (item.quantity * item.value), 0);
-        } else if (values.total) {
-          finalTotal = values.total;
+          laborCost = values.hydraulicItems.reduce((acc, item) => acc + (item.quantity * item.value), 0);
+        } else if (values.profit) { // profit from form is the labor cost
+          laborCost = values.profit;
         }
       }
 
-      const materialCost = values.materialCost || 0;
-      const profit = finalTotal - materialCost;
+      const finalTotal = laborCost + materialCost;
 
       const budgetData = {
         ...values,
         total: finalTotal,
         materialCost: materialCost,
-        profit: profit,
+        profit: laborCost, // Storing labor cost in the profit field
         userId: user.uid,
         clientId: values.clientId,
         serviceType: values.serviceType as ServiceType,
-        electricalItems: values.serviceType === 'Elétrica' ? values.electricalItems : [],
-        hydraulicItems: values.serviceType === 'Hidráulica' ? values.hydraulicItems : [],
       };
 
       try {
@@ -380,25 +379,26 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
 
   const workDays = budgetType === 'daily' && period?.from && period?.to ? differenceInCalendarDays(period.to, period.from) + 1 : 0;
   const dailyRateValue = form.watch('dailyRate') || 0;
-  const taskTotal = form.watch('total') || 0;
-
-  let total = 0;
-  if (budgetType === 'daily') {
-    total = workDays * dailyRateValue;
-  } else if (budgetType === 'task') {
-    if (serviceType === 'Pintura') {
-      total = wallWidth * wallHeight * sqMetersPrice * paintCoats;
-    } else if (serviceType === 'Elétrica') {
-        total = electricalItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
-    } else if (serviceType === 'Hidráulica') {
-        total = hydraulicItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
-    } else {
-      total = taskTotal;
-    }
-  }
   
   const materialCost = form.watch('materialCost') || 0;
-  const profit = total - materialCost;
+  let laborCost = 0;
+
+  if (budgetType === 'daily') {
+    laborCost = workDays * dailyRateValue;
+  } else if (budgetType === 'task') {
+    if (serviceType === 'Pintura') {
+      laborCost = wallWidth * wallHeight * sqMetersPrice * paintCoats;
+    } else if (serviceType === 'Elétrica') {
+      laborCost = electricalItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
+    } else if (serviceType === 'Hidráulica') {
+      laborCost = hydraulicItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
+    } else {
+      laborCost = form.watch('profit') || 0;
+    }
+  }
+
+  const total = laborCost + materialCost;
+  const profit = laborCost;
 
   return (
     <Form {...form}>
@@ -1078,17 +1078,17 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
 
         {budgetType === 'task' && serviceType !== 'Pintura' && serviceType !== 'Elétrica' && serviceType !== 'Hidráulica' && (
             <FormField
-            control={form.control}
-            name="total"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Valor Total da Tarefa (R$)</FormLabel>
-                <FormControl>
-                    <Input type="number" placeholder="500" {...field} value={field.value || ''}/>
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
+              control={form.control}
+              name="profit"
+              render={({ field }) => (
+                  <FormItem>
+                  <FormLabel>Valor da Mão de Obra (R$)</FormLabel>
+                  <FormControl>
+                      <Input type="number" placeholder="500" {...field} value={field.value || ''}/>
+                  </FormControl>
+                  <FormMessage />
+                  </FormItem>
+              )}
             />
         )}
 
@@ -1102,7 +1102,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                     <Input type="number" placeholder="0" {...field} value={field.value || ''}/>
                 </FormControl>
                  <FormDescription>
-                    Insira o custo total com materiais para este projeto. Este valor será deduzido do total para calcular seu lucro.
+                    Insira o custo total com materiais para este projeto.
                 </FormDescription>
                 <FormMessage />
                 </FormItem>
@@ -1127,17 +1127,17 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                     </div>
                   </>
                 )}
-                 <div className="flex justify-between font-bold text-lg border-b pb-2">
+                 <div className="flex justify-between">
+                    <span className="text-muted-foreground">Mão de Obra:</span>
+                    <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(profit)}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span className="text-muted-foreground">Custo com Material:</span>
+                    <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(materialCost)}</span>
+                </div>
+                 <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
                     <span>Valor Total:</span>
                     <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
-                </div>
-                <div className="flex justify-between pt-2">
-                    <span className="text-muted-foreground">Custo com Material:</span>
-                    <span className="text-red-600">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(materialCost)}</span>
-                </div>
-                 <div className="flex justify-between font-bold text-lg text-green-600">
-                    <span>Lucro do Projeto:</span>
-                    <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(profit)}</span>
                 </div>
             </CardContent>
         </Card>

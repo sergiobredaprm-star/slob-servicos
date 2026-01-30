@@ -37,13 +37,13 @@ export function StatsCards({ budgets }: StatsCardsProps) {
         totalRecebido: 0,
         totalPendente: 0,
         totalCancelado: 0,
-        lucroTotal: 0,
+        totalMaoDeObra: 0,
       };
     }
 
     let totalRecebido = 0;
     let totalPendente = 0;
-    let lucroTotal = 0;
+    let totalMaoDeObra = 0;
 
     const totalOrcado = budgets.reduce((sum, budget) => sum + budget.total, 0);
     
@@ -61,7 +61,7 @@ export function StatsCards({ budgets }: StatsCardsProps) {
 
       if (budget.status === 'ativo' || budget.status === 'concluído') {
          totalPendente += budget.total - paidAmount;
-         lucroTotal += budget.profit || 0;
+         totalMaoDeObra += budget.profit || 0;
       }
     });
 
@@ -71,7 +71,7 @@ export function StatsCards({ budgets }: StatsCardsProps) {
       totalRecebido,
       totalPendente,
       totalCancelado,
-      lucroTotal,
+      totalMaoDeObra,
     };
   }, [budgets]);
 
@@ -113,15 +113,15 @@ export function StatsCards({ budgets }: StatsCardsProps) {
        <CardLink href="/orcamentos?status=ativo">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lucro Total</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Mão de Obra</CardTitle>
             <PiggyBank className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(financialSummary.lucroTotal)}
+              {formatCurrency(financialSummary.totalMaoDeObra)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Soma dos lucros de projetos
+              Soma da mão de obra
             </p>
           </CardContent>
         </Card>
