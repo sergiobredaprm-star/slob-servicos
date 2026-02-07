@@ -61,7 +61,7 @@ export type Budget = {
   registrationDate: Date | Timestamp;
   total: number;
   materialCost?: number;
-  profit?: number;
+  profit?: number; // Represents labor cost
   status: BudgetStatus;
   userId: string;
   paymentHistory?: Payment[];
@@ -71,6 +71,8 @@ export type Budget = {
   paintCoats?: number;
   electricalItems?: ElectricalItem[];
   hydraulicItems?: HydraulicItem[];
+  issueInvoice?: boolean;
+  invoiceTaxRate?: number;
 };
 
 export type DailyRateSettings = {

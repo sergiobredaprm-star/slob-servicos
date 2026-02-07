@@ -43,6 +43,10 @@ function prepareBudgetDataForSave(data: any): any {
     } else {
         dataToSave.hydraulicItems = dataToSave.hydraulicItems || [];
     }
+    
+    if (!dataToSave.issueInvoice) {
+        delete dataToSave.invoiceTaxRate;
+    }
 
     // Remove undefined fields that might cause issues
     Object.keys(dataToSave).forEach(key => {

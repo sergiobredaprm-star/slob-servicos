@@ -148,16 +148,23 @@ export default function BudgetDetailsPage() {
     fetchCompanyProfile();
   }, [user, firestore]);
 
-  const { totalPaid, remainingBalance, paymentPercentage } = useMemo(() => {
+  const { totalPaid, remainingBalance, paymentPercentage, subtotal, taxAmount } = useMemo(() => {
     if (!budget) {
-      return { totalPaid: 0, remainingBalance: 0, paymentPercentage: 0 };
+      return { totalPaid: 0, remainingBalance: 0, paymentPercentage: 0, subtotal: 0, taxAmount: 0 };
     }
     const totalPaid =
       budget.paymentHistory?.reduce((acc, p) => acc + p.amount, 0) || 0;
     const remainingBalance = budget.total - totalPaid;
     const paymentPercentage =
       budget.total > 0 ? (totalPaid / budget.total) * 100 : 0;
-    return { totalPaid, remainingBalance, paymentPercentage };
+      
+    const laborCost = budget.profit || 0;
+    const materialCost = budget.materialCost || 0;
+    const calculatedSubtotal = laborCost + materialCost;
+    const calculatedTaxAmount = budget.total - calculatedSubtotal;
+
+
+    return { totalPaid, remainingBalance, paymentPercentage, subtotal: calculatedSubtotal, taxAmount: calculatedTaxAmount };
   }, [budget]);
 
   const handleAddPayment = () => {
@@ -313,13 +320,20 @@ export default function BudgetDetailsPage() {
     message += '*RESUMO FINANCEIRO*\n';
     message += '---------------------------------\n\n';
 
-    const laborCost = budget.profit || 0; // Profit field now stores labor cost
+    const laborCost = budget.profit || 0;
     
     message += `*Valor da Mão de Obra:* ${formatCurrency(laborCost)}\n`;
     if (budget.materialCost && budget.materialCost > 0) {
       message += `*Custo com Materiais:* ${formatCurrency(
         budget.materialCost
       )}\n`;
+    }
+    
+    const subtotalMsg = laborCost + (budget.materialCost || 0);
+    message += `*Subtotal:* ${formatCurrency(subtotalMsg)}\n`;
+
+    if (budget.issueInvoice && budget.invoiceTaxRate && taxAmount > 0) {
+        message += `*Imposto da Nota (${budget.invoiceTaxRate}%):* ${formatCurrency(taxAmount)}\n`;
     }
 
     message += `\n*VALOR TOTAL:* *${formatCurrency(budget.total)}*\n\n`;
@@ -470,43 +484,57 @@ export default function BudgetDetailsPage() {
           <Separator />
 
           <div className="space-y-4">
-            <div className="grid md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Valor Total do Projeto
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xl font-bold">
-                    {formatCurrency(budget.total)}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Mão de Obra
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xl font-bold text-green-600">
-                    {formatCurrency(budget.profit || 0)}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Custo com Material
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xl font-bold text-red-600">
-                    {formatCurrency(budget.materialCost || 0)}
-                  </p>
-                </CardContent>
-              </Card>
+            <div className="grid md:grid-cols-2 gap-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Resumo Financeiro</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Mão de Obra</span>
+                            <span>{formatCurrency(budget.profit || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Custo com Material</span>
+                            <span>{formatCurrency(budget.materialCost || 0)}</span>
+                        </div>
+                         <div className="flex justify-between font-medium">
+                            <span>Subtotal</span>
+                            <span>{formatCurrency(subtotal)}</span>
+                        </div>
+                        {budget.issueInvoice && taxAmount > 0 && (
+                             <div className="flex justify-between">
+                                <span className="text-muted-foreground">Imposto da Nota ({budget.invoiceTaxRate}%)</span>
+                                <span>{formatCurrency(taxAmount)}</span>
+                            </div>
+                        )}
+                        <Separator />
+                        <div className="flex justify-between font-bold text-lg">
+                            <span>Valor Total</span>
+                            <span>{formatCurrency(budget.total)}</span>
+                        </div>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Balanço de Pagamentos</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total Pago</span>
+                            <span className="text-green-600">{formatCurrency(totalPaid)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Saldo Devedor</span>
+                            <span className="text-red-600">{formatCurrency(remainingBalance)}</span>
+                        </div>
+                         <Separator />
+                         <Progress value={paymentPercentage} className="h-2 mt-4" />
+                        <p className="text-xs text-muted-foreground mt-1 text-right">
+                        {paymentPercentage.toFixed(0)}% pago
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
           </div>
 
@@ -514,63 +542,15 @@ export default function BudgetDetailsPage() {
 
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold font-headline">Pagamentos</h3>
+              <h3 className="text-lg font-semibold font-headline">Histórico de Pagamentos</h3>
               <Button size="sm" onClick={handleAddPayment}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Adicionar Pagamento
               </Button>
             </div>
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Valor Total
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xl font-bold">
-                      {formatCurrency(budget.total)}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Total Pago</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xl font-bold text-green-600">
-                      {formatCurrency(totalPaid)}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Saldo Devedor
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xl font-bold text-red-600">
-                      {formatCurrency(remainingBalance)}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-              <div>
-                <Progress value={paymentPercentage} className="h-2" />
-                <p className="text-xs text-muted-foreground mt-1 text-right">
-                  {paymentPercentage.toFixed(0)}% pago
-                </p>
-              </div>
-
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    Histórico de Pagamentos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <Table>
                     <TableHeader>
                       <TableRow>

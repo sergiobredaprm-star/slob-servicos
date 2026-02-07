@@ -32,10 +32,12 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, Sparkles, Loader2, Check, ChevronsUpDown, Trash2, PlusCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
+import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
@@ -79,6 +81,8 @@ const baseFormSchema = z.object({
   task: z.string().min(5, { message: 'A descrição da tarefa deve ter pelo menos 5 caracteres.' }),
   materialCost: z.coerce.number().optional(),
   status: z.enum(['prospecção', 'ativo', 'concluído', 'cancelado']),
+  issueInvoice: z.boolean().optional(),
+  invoiceTaxRate: z.coerce.number().optional(),
 });
 
 const dailyBudgetSchema = baseFormSchema.extend({
@@ -238,6 +242,8 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
       paintCoats: 2,
       electricalItems: [{ name: '', quantity: 1, value: 0 }],
       hydraulicItems: [{ name: '', quantity: 1, value: 0 }],
+      issueInvoice: false,
+      invoiceTaxRate: 0,
     },
   });
 
@@ -272,6 +278,10 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
 
   const electricalItems = form.watch('electricalItems');
   const hydraulicItems = form.watch('hydraulicItems');
+
+  const issueInvoice = form.watch('issueInvoice');
+  const invoiceTaxRate = form.watch('invoiceTaxRate') || 0;
+
 
   const getFirstErrorMessage = (errors: FieldErrors): string | undefined => {
     for (const key in errors) {
@@ -314,9 +324,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
     }
 
     startSubmitTransition(async () => {
-      const materialCost = values.materialCost || 0;
       let laborCost = 0;
-
       if (values.budgetType === 'daily' && values.period?.from && values.period?.to && values.dailyRate) {
         const workDays = differenceInCalendarDays(values.period.to, values.period.from) + 1;
         laborCost = workDays * values.dailyRate;
@@ -331,12 +339,17 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
           laborCost = values.profit;
         }
       }
+      
+      const materialCost = values.materialCost || 0;
+      const subtotal = laborCost + materialCost;
 
-      const finalTotal = laborCost + materialCost;
+      const total = values.issueInvoice && values.invoiceTaxRate && values.invoiceTaxRate > 0
+        ? subtotal / (1 - (values.invoiceTaxRate / 100))
+        : subtotal;
 
       const budgetData = {
         ...values,
-        total: finalTotal,
+        total: total,
         materialCost: materialCost,
         profit: laborCost, // Storing labor cost in the profit field
         userId: user.uid,
@@ -409,8 +422,11 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
     }
   }
 
-  const total = laborCost + materialCost;
-  const profit = laborCost;
+  const subtotal = laborCost + materialCost;
+  const total = issueInvoice && invoiceTaxRate > 0
+    ? subtotal / (1 - (invoiceTaxRate / 100))
+    : subtotal;
+  const taxAmount = total - subtotal;
 
   return (
     <Form {...form}>
@@ -1120,6 +1136,55 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                 </FormItem>
             )}
         />
+        
+        <Card className="bg-muted/50">
+          <CardHeader>
+            <CardTitle>Nota Fiscal</CardTitle>
+            <CardDescription>
+              Cálculo de imposto para emissão de nota fiscal de serviço.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="issueInvoice"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Emitir Nota Fiscal?</FormLabel>
+                    <FormDescription>
+                      O valor do imposto será somado ao total do orçamento.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            {issueInvoice && (
+              <FormField
+                control={form.control}
+                name="invoiceTaxRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Alíquota do Imposto (%)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Ex: 5" {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormDescription>
+                      Insira a porcentagem do imposto (apenas números).
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </CardContent>
+        </Card>
 
 
         <Card className="bg-muted/50">
@@ -1141,13 +1206,23 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                 )}
                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Mão de Obra:</span>
-                    <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(profit)}</span>
+                    <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(laborCost)}</span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">Custo com Material:</span>
                     <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(materialCost)}</span>
                 </div>
-                 <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
+                 <div className="flex justify-between font-bold text-base border-t pt-2 mt-2">
+                    <span>Subtotal:</span>
+                    <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotal)}</span>
+                </div>
+                {issueInvoice && taxAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Valor da Nota ({invoiceTaxRate}%):</span>
+                    <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxAmount)}</span>
+                  </div>
+                )}
+                 <div className="flex justify-between font-bold text-lg">
                     <span>Valor Total:</span>
                     <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
                 </div>

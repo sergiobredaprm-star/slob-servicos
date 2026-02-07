@@ -268,6 +268,14 @@
           "items": {
             "$ref": "#/entities/HydraulicItem"
           }
+        },
+        "issueInvoice": {
+          "type": "boolean",
+          "description": "Indicates if an invoice will be issued for this budget."
+        },
+        "invoiceTaxRate": {
+          "type": "number",
+          "description": "The tax rate percentage to be applied for the invoice."
         }
       },
       "required": [
