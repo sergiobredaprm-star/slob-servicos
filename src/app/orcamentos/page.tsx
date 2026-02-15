@@ -123,7 +123,12 @@ function OrcamentosPageComponent() {
       const clientMatch = clientFilter ? budget.clientId === clientFilter : true;
       const taskMatch = taskFilter ? (budget.task || '').toLowerCase().includes(taskFilter.toLowerCase()) : true;
       const statusMatch = statusFilter ? budget.status === statusFilter : true;
-      const observationMatch = observationFilter ? (budget.clientDescription || '').toLowerCase().includes(observationFilter.toLowerCase()) : true;
+      const observationMatch = observationFilter
+        ? (budget.clientDescription || '').toLowerCase().includes(observationFilter.toLowerCase()) ||
+          (budget.paymentHistory || []).some(payment =>
+            (payment.notes || '').toLowerCase().includes(observationFilter.toLowerCase())
+          )
+        : true;
       return clientMatch && taskMatch && statusMatch && observationMatch;
     })
   }, [budgets, clientFilter, taskFilter, statusFilter, observationFilter]);
@@ -289,7 +294,7 @@ function OrcamentosPageComponent() {
               className="w-full sm:w-auto md:w-[200px]"
             />
             <Input
-              placeholder="Filtrar por observação..."
+              placeholder="Buscar em observações..."
               value={observationFilter}
               onChange={(e) => setObservationFilter(e.target.value)}
               className="w-full sm:w-auto md:w-[200px]"
@@ -421,3 +426,5 @@ export default function OrcamentosPage() {
     </Suspense>
   )
 }
+
+    
