@@ -121,7 +121,7 @@ function OrcamentosPageComponent() {
     if (!budgets) return [];
     return budgets.filter(budget => {
       const clientMatch = clientFilter ? budget.clientId === clientFilter : true;
-      const taskMatch = taskFilter ? budget.task.toLowerCase().includes(taskFilter.toLowerCase()) : true;
+      const taskMatch = taskFilter ? (budget.task || '').toLowerCase().includes(taskFilter.toLowerCase()) : true;
       const statusMatch = statusFilter ? budget.status === statusFilter : true;
       const observationMatch = observationFilter ? (budget.clientDescription || '').toLowerCase().includes(observationFilter.toLowerCase()) : true;
       return clientMatch && taskMatch && statusMatch && observationMatch;
