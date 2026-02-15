@@ -234,7 +234,7 @@ export default function BudgetDetailsPage() {
     message += '*ORÇAMENTO DE SERVIÇOS*\n\n';
     message += `*Cliente:* ${budget.clientName}\n`;
     if (budget.clientDescription) {
-      message += `*Observações do Cliente:* ${budget.clientDescription}\n`;
+      message += `*Observações:* ${budget.clientDescription}\n`;
     }
     message += '\n';
 
@@ -433,7 +433,7 @@ export default function BudgetDetailsPage() {
             </div>
             <div className="space-y-1">
               <p className="font-medium text-muted-foreground">
-                Descrição do Cliente
+                Observações
               </p>
               <p>{budget.clientDescription || 'Não informado'}</p>
             </div>

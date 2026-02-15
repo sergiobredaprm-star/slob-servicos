@@ -177,7 +177,7 @@
         },
         "clientDescription": {
             "type": "string",
-            "description": "A short description about the client."
+            "description": "General observations about the budget."
         },
         "serviceType": {
           "type": "string",

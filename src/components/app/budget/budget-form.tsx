@@ -503,10 +503,10 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
           name="clientDescription"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Descrição do Cliente</FormLabel>
+              <FormLabel>Observações</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Descreva o cliente e suas necessidades..."
+                  placeholder="Anote aqui informações importantes, como 'emitir NF', detalhes do serviço, etc."
                   {...field}
                 />
               </FormControl>
