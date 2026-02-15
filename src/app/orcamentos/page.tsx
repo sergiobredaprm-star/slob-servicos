@@ -89,6 +89,7 @@ function OrcamentosPageComponent() {
   const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
   const [clientFilter, setClientFilter] = useState<string | null>(null);
   const [taskFilter, setTaskFilter] = useState<string>('');
+  const [observationFilter, setObservationFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<BudgetStatus | null>(null);
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
 
@@ -122,9 +123,10 @@ function OrcamentosPageComponent() {
       const clientMatch = clientFilter ? budget.clientId === clientFilter : true;
       const taskMatch = taskFilter ? budget.task.toLowerCase().includes(taskFilter.toLowerCase()) : true;
       const statusMatch = statusFilter ? budget.status === statusFilter : true;
-      return clientMatch && taskMatch && statusMatch;
+      const observationMatch = observationFilter ? (budget.clientDescription || '').toLowerCase().includes(observationFilter.toLowerCase()) : true;
+      return clientMatch && taskMatch && statusMatch && observationMatch;
     })
-  }, [budgets, clientFilter, taskFilter, statusFilter]);
+  }, [budgets, clientFilter, taskFilter, statusFilter, observationFilter]);
   
   const filteredSummary = useMemo(() => {
     if (!filteredBudgets || filteredBudgets.length === 0) {
@@ -234,14 +236,14 @@ function OrcamentosPageComponent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-4 items-center">
+          <div className="flex flex-wrap gap-4 mb-4 items-center">
             <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
                 <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       role="combobox"
                       aria-expanded={isComboboxOpen}
-                      className="w-full sm:w-[250px] justify-between"
+                      className="w-full sm:w-auto md:w-[200px] justify-between"
                       disabled={isLoadingClients}
                     >
                       {isLoadingClients
@@ -284,10 +286,16 @@ function OrcamentosPageComponent() {
               placeholder="Filtrar por tarefa..."
               value={taskFilter}
               onChange={(e) => setTaskFilter(e.target.value)}
-              className="w-full sm:w-[250px]"
+              className="w-full sm:w-auto md:w-[200px]"
+            />
+            <Input
+              placeholder="Filtrar por observação..."
+              value={observationFilter}
+              onChange={(e) => setObservationFilter(e.target.value)}
+              className="w-full sm:w-auto md:w-[200px]"
             />
             <Select value={statusFilter ?? 'all'} onValueChange={(value) => setStatusFilter(value === 'all' ? null : value as BudgetStatus)}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-full sm:w-auto md:w-[180px]">
                 <SelectValue placeholder="Filtrar por status..." />
               </SelectTrigger>
               <SelectContent>
