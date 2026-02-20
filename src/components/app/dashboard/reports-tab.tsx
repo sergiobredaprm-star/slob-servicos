@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -32,9 +32,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Calendar as CalendarIcon, FileDown, Loader2 } from 'lucide-react';
-import { useFirebase } from '@/firebase';
+import { Calendar as CalendarIcon, FileDown, Loader2, User, Activity } from 'lucide-react';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import {
   collection,
   query,
@@ -42,7 +49,7 @@ import {
   getDocs,
   Timestamp,
 } from 'firebase/firestore';
-import { Budget, CompanyProfile } from '@/lib/types';
+import { Budget, CompanyProfile, Client, BudgetStatus } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -52,7 +59,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { BudgetStatus } from '@/lib/types';
 import { getCompanyProfile } from '@/lib/firebase/company-services';
 
 const statusStyles: { [key in BudgetStatus]: string } = {
@@ -94,9 +100,20 @@ export function ReportsTab() {
     from: addDays(new Date(), -30),
     to: new Date(),
   });
+  
+  const [filterClientId, setFilterClientId] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  
   const [reportData, setReportData] = useState<Budget[] | null>(null);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch clients for the filter
+  const clientsQuery = useMemoFirebase(() =>
+    user && firestore ? query(collection(firestore, 'users', user.uid, 'clients')) : null
+  , [firestore, user]);
+  
+  const { data: clients } = useCollection<Client>(clientsQuery);
 
   useEffect(() => {
     async function fetchCompanyProfile() {
@@ -130,16 +147,34 @@ export function ReportsTab() {
       setReportData(budgets);
     } catch (error) {
       console.error('Error generating report:', error);
-      // Aqui você pode adicionar um toast de erro
     } finally {
       setIsLoading(false);
     }
   };
 
+  const filteredData = useMemo(() => {
+    if (!reportData) return [];
+    return reportData.filter(budget => {
+      const clientMatch = filterClientId === 'all' || budget.clientId === filterClientId;
+      const statusMatch = filterStatus === 'all' || budget.status === filterStatus;
+      return clientMatch && statusMatch;
+    });
+  }, [reportData, filterClientId, filterStatus]);
+
+  const totalAtivo = filteredData
+      .filter((b) => b.status === 'ativo')
+      .reduce((sum, b) => sum + b.total, 0);
+  const totalConcluido = filteredData
+      .filter((b) => b.status === 'concluído')
+      .reduce((sum, b) => sum + b.total, 0);
+  const totalCancelado = filteredData
+      .filter((b) => b.status === 'cancelado')
+      .reduce((sum, b) => sum + b.total, 0);
+  const grandTotal = totalAtivo + totalConcluido;
+
   const handleExportPDF = () => {
-    if (!reportData || !date?.from || !date.to) return;
+    if (filteredData.length === 0 || !date?.from || !date.to) return;
     const doc = new jsPDF();
-    const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     let startY = 22;
 
     doc.setFontSize(18);
@@ -156,7 +191,6 @@ export function ReportsTab() {
     doc.setFontSize(11);
     doc.text(periodStr, 14, startY);
     startY += 10;
-
 
     const summaryData = [
         ['Total Geral', formatCurrency(grandTotal)],
@@ -176,7 +210,7 @@ export function ReportsTab() {
     startY = (doc as any).lastAutoTable.finalY + 10;
 
     const tableColumn = ['Cliente', 'Tarefa', 'Status', 'Total'];
-    const tableRows = reportData.map((budget) => [
+    const tableRows = filteredData.map((budget) => [
       budget.clientName,
       budget.task,
       budget.status,
@@ -193,8 +227,8 @@ export function ReportsTab() {
     doc.save(`relatorio_orcamentos_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
-  const handleShareWhatsApp = (filterStatus?: BudgetStatus) => {
-    if (!reportData || !date?.from || !date.to) return;
+  const handleShareWhatsApp = (statusFilter?: BudgetStatus) => {
+    if (filteredData.length === 0 || !date?.from || !date.to) return;
 
     let message = `*Relatório de Orçamentos - ${companyProfile?.companyName || 'SLOB_SERVIÇOS'}*\n`;
     if (companyProfile?.companyTaxId) {
@@ -203,59 +237,35 @@ export function ReportsTab() {
     message += '\n';
     
     const periodStr = `*Período:* ${format(date.from, 'dd/MM/yyyy', { locale: ptBR })} a ${format(date.to, 'dd/MM/yyyy', { locale: ptBR })}`;
-    message += `${periodStr}\n\n`;
+    message += `${periodStr}\n`;
 
-    if (filterStatus) {
-      const filteredByStatus = reportData.filter(b => b.status === filterStatus);
-      if (filteredByStatus.length > 0) {
-          const statusTitle = filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1);
-          message += `*Tarefas em ${statusTitle}*\n`;
-          filteredByStatus.forEach(budget => {
-              message += ` • ${budget.task} - ${budget.clientName} (${formatCurrency(budget.total)})\n`;
-          });
-      } else {
-        message += `_Nenhuma tarefa encontrada com o status "${filterStatus}" para este período._\n`;
-      }
-    } else {
-      message += `*Resumo do Relatório*\n`;
-      message += `*Total Geral (Ativo + Concluído):* ${formatCurrency(grandTotal)}\n`;
-      message += `*Concluído:* ${formatCurrency(totalConcluido)}\n`;
-      message += `*Ativo:* ${formatCurrency(totalAtivo)}\n`;
-      message += `*Cancelado:* ${formatCurrency(totalCancelado)}\n`;
-      
-      const statusOrder: BudgetStatus[] = ['prospecção', 'ativo', 'concluído', 'cancelado'];
+    if (filterClientId !== 'all') {
+        const clientName = clients?.find(c => c.id === filterClientId)?.name;
+        message += `*Cliente:* ${clientName}\n`;
+    }
+    message += '\n';
 
-      statusOrder.forEach(status => {
-          const budgetsByStatus = reportData.filter(b => b.status === status);
-          if (budgetsByStatus.length > 0) {
-              message += `\n*${status.charAt(0).toUpperCase() + status.slice(1)}*\n`;
-              budgetsByStatus.forEach(budget => {
-                  message += ` • ${budget.task} - ${budget.clientName} (${formatCurrency(budget.total)})\n`;
-              });
-          }
-      });
+    message += `*Resumo do Relatório*\n`;
+    message += `*Total Geral:* ${formatCurrency(grandTotal)}\n`;
+    message += `*Concluído:* ${formatCurrency(totalConcluido)}\n`;
+    message += `*Ativo:* ${formatCurrency(totalAtivo)}\n`;
+    message += `*Cancelado:* ${formatCurrency(totalCancelado)}\n`;
+    
+    const displayData = statusFilter ? filteredData.filter(b => b.status === statusFilter) : filteredData;
+
+    if (displayData.length > 0) {
+        message += `\n*Lista de Serviços:*\n`;
+        displayData.forEach(budget => {
+            message += ` • ${budget.task} - ${budget.clientName} (${formatCurrency(budget.total)})\n`;
+        });
     }
 
-    message += `\n_Este é um resumo automático gerado pelo SLOB_SERVIÇOS._`;
+    message += `\n_Resumo gerado pelo SLOB_SERVIÇOS._`;
 
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
-
-  const totalAtivo =
-    reportData
-      ?.filter((b) => b.status === 'ativo')
-      .reduce((sum, b) => sum + b.total, 0) || 0;
-  const totalConcluido =
-    reportData
-      ?.filter((b) => b.status === 'concluído')
-      .reduce((sum, b) => sum + b.total, 0) || 0;
-  const totalCancelado =
-    reportData
-      ?.filter((b) => b.status === 'cancelado')
-      .reduce((sum, b) => sum + b.total, 0) || 0;
-  const grandTotal = totalAtivo + totalConcluido;
   const allStatus: BudgetStatus[] = ['prospecção', 'ativo', 'concluído', 'cancelado'];
 
   return (
@@ -263,55 +273,87 @@ export function ReportsTab() {
       <CardHeader>
         <CardTitle>Relatórios</CardTitle>
         <CardDescription>
-          Gere relatórios customizados dos seus orçamentos.
+          Gere extratos e consolidados customizados para seus clientes.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="date"
-                variant={'outline'}
-                className={cn(
-                  'w-[300px] justify-start text-left font-normal',
-                  !date && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date?.from ? (
-                  date.to ? (
-                    <>
-                      {format(date.from, 'LLL dd, y', { locale: ptBR })} -{' '}
-                      {format(date.to, 'LLL dd, y', { locale: ptBR })}
-                    </>
-                  ) : (
-                    format(date.from, 'LLL dd, y', { locale: ptBR })
-                  )
-                ) : (
-                  <span>Escolha um período</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={setDate}
-                numberOfMonths={2}
-                locale={ptBR}
-              />
-            </PopoverContent>
-          </Popover>
-          <Button onClick={handleGenerateReport} disabled={isLoading}>
+        <div className="flex flex-col md:flex-row items-end gap-4">
+          <div className="space-y-2 flex-grow sm:flex-grow-0">
+            <label className="text-sm font-medium">Período</label>
+            <Popover>
+                <PopoverTrigger asChild>
+                <Button
+                    id="date"
+                    variant={'outline'}
+                    className={cn(
+                    'w-full sm:w-[300px] justify-start text-left font-normal',
+                    !date && 'text-muted-foreground'
+                    )}
+                >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date?.from ? (
+                    date.to ? (
+                        <>
+                        {format(date.from, 'LLL dd, y', { locale: ptBR })} -{' '}
+                        {format(date.to, 'LLL dd, y', { locale: ptBR })}
+                        </>
+                    ) : (
+                        format(date.from, 'LLL dd, y', { locale: ptBR })
+                    )
+                    ) : (
+                    <span>Escolha um período</span>
+                    )}
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={date?.from}
+                    selected={date}
+                    onSelect={setDate}
+                    numberOfMonths={2}
+                    locale={ptBR}
+                />
+                </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2 flex-grow sm:flex-grow-0">
+            <label className="text-sm font-medium flex items-center gap-2"><User className="h-3 w-3" /> Cliente</label>
+            <Select value={filterClientId} onValueChange={setFilterClientId}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Todos os clientes" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Todos os clientes</SelectItem>
+                    {clients?.map(client => (
+                        <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2 flex-grow sm:flex-grow-0">
+            <label className="text-sm font-medium flex items-center gap-2"><Activity className="h-3 w-3" /> Status</label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Todos os status" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Todos os status</SelectItem>
+                    {allStatus.map(status => (
+                        <SelectItem key={status} value={status} className="capitalize">{status}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+          </div>
+
+          <Button onClick={handleGenerateReport} disabled={isLoading} className="w-full md:w-auto">
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Gerar Relatório
           </Button>
         </div>
-
-        {isLoading && <p>Gerando relatório...</p>}
 
         {reportData && (
           <div className="space-y-4 pt-4">
@@ -319,7 +361,7 @@ export function ReportsTab() {
               <h3 className="text-lg font-semibold">Resultados do Relatório</h3>
                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" disabled={filteredData.length === 0}>
                         <FileDown className="mr-2 h-4 w-4" />
                         Exportar / Compartilhar
                     </Button>
@@ -341,7 +383,7 @@ export function ReportsTab() {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           {allStatus.map(status => (
-                            <DropdownMenuItem key={status} onClick={() => handleShareWhatsApp(status)}>
+                            <DropdownMenuItem key={status} onClick={() => handleShareWhatsApp(status as BudgetStatus)}>
                               Somente {status.charAt(0).toUpperCase() + status.slice(1)}
                             </DropdownMenuItem>
                           ))}
@@ -411,8 +453,8 @@ export function ReportsTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {reportData.length > 0 ? (
-                  reportData.map((budget) => (
+                {filteredData.length > 0 ? (
+                  filteredData.map((budget) => (
                     <TableRow key={budget.id}>
                       <TableCell className="font-medium">
                         {budget.clientName}
@@ -433,8 +475,8 @@ export function ReportsTab() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center">
-                      Nenhum orçamento encontrado para este período.
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      Nenhum orçamento encontrado com os filtros aplicados.
                     </TableCell>
                   </TableRow>
                 )}
