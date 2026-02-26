@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -69,6 +68,20 @@
         }
       },
       "required": ["id", "amount", "date"]
+    },
+    "PaintingRoom": {
+      "title": "Painting Room",
+      "type": "object",
+      "description": "Details of a room for painting services.",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["completo", "paredes", "teto"] },
+        "wallPerimeter": { "type": "number" },
+        "wallHeight": { "type": "number" },
+        "ceilingWidth": { "type": "number" },
+        "ceilingLength": { "type": "number" },
+        "calculatedArea": { "type": "number" }
+      }
     },
     "ElectricalItem": {
       "title": "Electrical Item",
@@ -246,6 +259,10 @@
         "wallHeight": {
             "type": "number",
             "description": "Height of the wall in meters, for painting services."
+        },
+        "paintingRooms": {
+          "type": "array",
+          "items": { "$ref": "#/entities/PaintingRoom" }
         },
         "sqMetersPrice": {
             "type": "number",

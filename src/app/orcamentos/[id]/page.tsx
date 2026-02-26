@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
-import { Budget, BudgetStatus, Payment, CompanyProfile, Client } from '@/lib/types';
+import { Budget, BudgetStatus, Payment, CompanyProfile, Client, PaintingRoom } from '@/lib/types';
 import { doc, Timestamp } from 'firebase/firestore';
 import { useParams, useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -265,20 +265,24 @@ export default function BudgetDetailsPage() {
       message += `*Valor da diária:* ${formatCurrency(budget.dailyRate || 0)}\n\n`;
     } else {
       message += `*Tipo:* Por Tarefa (Valor Fechado)\n\n`;
-      if (
-        budget.serviceType === 'Pintura' &&
-        budget.wallHeight &&
-        budget.wallWidth
-      ) {
+      
+      if (budget.serviceType === 'Pintura' && budget.paintingRooms && budget.paintingRooms.length > 0) {
+        message += '*Detalhamento de Pintura por Cômodo:*\n';
+        budget.paintingRooms.forEach((room) => {
+          const typeLabel = room.type === 'completo' ? 'Completo (Parede+Teto)' : room.type === 'paredes' ? 'Só Paredes' : 'Só Teto';
+          message += ` • *${room.name}*: ${typeLabel} (${room.calculatedArea.toFixed(2)} m²)\n`;
+        });
+        const totalArea = budget.paintingRooms.reduce((acc, r) => acc + r.calculatedArea, 0);
+        message += `\n*Área Total:* ${totalArea.toFixed(2)} m²\n`;
+        message += `*Valor por m²:* ${formatCurrency(budget.sqMetersPrice || 0)}\n`;
+        message += `*Nº de Demãos:* ${budget.paintCoats || 1}\n\n`;
+      } else if (budget.serviceType === 'Pintura' && budget.wallHeight && budget.wallWidth) {
+        // Legacy support
         const area = budget.wallHeight * budget.wallWidth;
         message += `*Detalhes da Pintura:*\n`;
-        message += ` • Área: ${budget.wallHeight}m (altura) x ${
-          budget.wallWidth
-        }m (largura) = ${area.toFixed(2)} m²\n`;
-        message += ` • Valor por m²: ${formatCurrency(
-          budget.sqMetersPrice || 0
-        )}\n`;
-        message += ` • Número de Demãos: ${budget.paintCoats || 1}\n\n`;
+        message += ` • Área: ${budget.wallHeight}m x ${budget.wallWidth}m = ${area.toFixed(2)} m²\n`;
+        message += ` • Valor por m²: ${formatCurrency(budget.sqMetersPrice || 0)}\n`;
+        message += ` • Nº Demãos: ${budget.paintCoats || 1}\n\n`;
       }
 
       if (
@@ -480,6 +484,34 @@ export default function BudgetDetailsPage() {
               <p>{formatDate(budget.registrationDate)}</p>
             </div>
           </div>
+
+          {budget.serviceType === 'Pintura' && budget.paintingRooms && budget.paintingRooms.length > 0 && (
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-semibold text-base">Detalhamento de Pintura</h3>
+              <div className="grid gap-4">
+                {budget.paintingRooms.map((room, idx) => (
+                  <Card key={idx} className="bg-muted/30">
+                    <CardContent className="p-4 flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-base">{room.name || `Cômodo ${idx + 1}`}</p>
+                        <p className="text-muted-foreground capitalize">
+                          {room.type === 'completo' ? 'Cômodo Completo' : room.type === 'paredes' ? 'Só Paredes' : 'Só Teto'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold">{room.calculatedArea.toFixed(2)} m²</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <div className="flex justify-end gap-8 font-medium">
+                <p>Total de Área: <span className="font-bold">{budget.paintingRooms.reduce((acc, r) => acc + r.calculatedArea, 0).toFixed(2)} m²</span></p>
+                <p>Valor por m²: <span className="font-bold">{formatCurrency(budget.sqMetersPrice || 0)}</span></p>
+                <p>Demãos: <span className="font-bold">{budget.paintCoats || 1}</span></p>
+              </div>
+            </div>
+          )}
 
           <Separator />
 

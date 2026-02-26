@@ -44,6 +44,18 @@ export type ServiceTypeItem = {
   userId: string;
 };
 
+export type PaintingRoomType = 'completo' | 'paredes' | 'teto';
+
+export type PaintingRoom = {
+  name: string;
+  type: PaintingRoomType;
+  wallPerimeter?: number;
+  wallHeight?: number;
+  ceilingWidth?: number;
+  ceilingLength?: number;
+  calculatedArea: number;
+};
+
 export type Budget = {
   id:string;
   clientId: string;
@@ -65,8 +77,11 @@ export type Budget = {
   status: BudgetStatus;
   userId: string;
   paymentHistory?: Payment[];
+  // Legacy Painting fields
   wallWidth?: number;
   wallHeight?: number;
+  // New Painting fields
+  paintingRooms?: PaintingRoom[];
   sqMetersPrice?: number;
   paintCoats?: number;
   electricalItems?: ElectricalItem[];

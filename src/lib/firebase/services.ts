@@ -30,6 +30,9 @@ function prepareBudgetDataForSave(data: any): any {
         delete dataToSave.wallHeight;
         delete dataToSave.sqMetersPrice;
         delete dataToSave.paintCoats;
+        delete dataToSave.paintingRooms;
+    } else {
+        dataToSave.paintingRooms = dataToSave.paintingRooms || [];
     }
 
     if (dataToSave.serviceType !== 'Elétrica') {
