@@ -36,7 +36,7 @@ import {
   CardDescription
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Sparkles, Loader2, Check, ChevronsUpDown, Trash2, PlusCircle, ListSearch } from 'lucide-react';
+import { CalendarIcon, Sparkles, Loader2, Check, ChevronsUpDown, Trash2, PlusCircle, Search } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
@@ -838,7 +838,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <Button variant="outline" size="icon" title="Itens Salvos">
-                                    <ListSearch className="h-4 w-4" />
+                                    <Search className="h-4 w-4" />
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-0">
@@ -956,7 +956,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <Button variant="outline" size="icon" title="Itens Salvos">
-                                    <ListSearch className="h-4 w-4" />
+                                    <Search className="h-4 w-4" />
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-0">
