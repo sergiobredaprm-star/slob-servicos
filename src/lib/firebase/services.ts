@@ -3,8 +3,29 @@ import { collection, Firestore, Timestamp, doc, updateDoc, arrayUnion, getDoc, a
 import { addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { Budget, Payment, ServiceType } from '@/lib/types';
 
+/**
+ * Recursively removes all undefined properties from an object or array.
+ * Firestore does not support undefined values.
+ */
+function deepClean(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(deepClean);
+  } else if (obj !== null && typeof obj === 'object' && !(obj instanceof Date) && !(obj instanceof Timestamp)) {
+    const result: any = {};
+    Object.keys(obj).forEach((key) => {
+      const value = obj[key];
+      if (value !== undefined) {
+        result[key] = deepClean(value);
+      }
+    });
+    return result;
+  }
+  return obj;
+}
+
 function prepareBudgetDataForSave(data: any): any {
-    const dataToSave = { ...data };
+    // Start by deep cleaning to remove any undefineds from the form
+    let dataToSave = deepClean(data);
 
     // Safely convert dates, only if they exist and are Date objects
     if (dataToSave.period?.from instanceof Date) {
@@ -24,7 +45,7 @@ function prepareBudgetDataForSave(data: any): any {
         dataToSave.registrationDate = Timestamp.now();
     }
 
-    // Conditionally include fields based on serviceType
+    // Conditionally include/clean fields based on serviceType
     if (dataToSave.serviceType !== 'Pintura') {
         delete dataToSave.wallWidth;
         delete dataToSave.wallHeight;
@@ -51,13 +72,6 @@ function prepareBudgetDataForSave(data: any): any {
         delete dataToSave.invoiceTaxRate;
     }
 
-    // Remove undefined fields that might cause issues
-    Object.keys(dataToSave).forEach(key => {
-        if (dataToSave[key] === undefined) {
-            delete dataToSave[key];
-        }
-    });
-
     return dataToSave;
 }
 
@@ -69,12 +83,17 @@ export async function saveBudget(firestore: Firestore, userId: string, budgetDat
     
     const dataToSave = prepareBudgetDataForSave(budgetData);
 
-    if (budgetId) {
-        const budgetDoc = doc(firestore, 'users', userId, 'budgets', budgetId);
-        return setDocumentNonBlocking(budgetDoc, dataToSave, { merge: true });
-    } else {
-        const budgetCollection = collection(firestore, 'users', userId, 'budgets');
-        return addDocumentNonBlocking(budgetCollection, {...dataToSave, paymentHistory: [] });
+    try {
+        if (budgetId) {
+            const budgetDoc = doc(firestore, 'users', userId, 'budgets', budgetId);
+            return setDocumentNonBlocking(budgetDoc, dataToSave, { merge: true });
+        } else {
+            const budgetCollection = collection(firestore, 'users', userId, 'budgets');
+            return addDocumentNonBlocking(budgetCollection, {...dataToSave, paymentHistory: [] });
+        }
+    } catch (error) {
+        console.error("Critical error in saveBudget service:", error);
+        throw error;
     }
 }
 
@@ -97,8 +116,6 @@ export async function addPaymentToBudget(firestore: Firestore, userId: string, b
         date: Timestamp.fromDate(payment.date as Date) 
     };
 
-    // We don't use the non-blocking updater here because we want to await the result
-    // to give feedback to the user. This is a user-interactive action.
     await updateDoc(budgetDocRef, {
         paymentHistory: arrayUnion(paymentWithId)
     });
@@ -110,7 +127,6 @@ export async function updatePaymentInBudget(firestore: Firestore, userId: string
     }
     const budgetDocRef = doc(firestore, 'users', userId, 'budgets', budgetId);
     
-    // Convert date to timestamp for storing in Firestore
     const paymentToStore = {
         ...updatedPayment,
         date: Timestamp.fromDate(updatedPayment.date as Date),
@@ -129,11 +145,9 @@ export async function updatePaymentInBudget(firestore: Firestore, userId: string
         throw new Error("Payment not found in history.");
     }
 
-    // Create a new array with the updated payment
     const newPaymentHistory = [...paymentHistory];
     newPaymentHistory[paymentIndex] = paymentToStore;
     
-    // Update the document with the new payment history array
     await updateDoc(budgetDocRef, {
         paymentHistory: newPaymentHistory
     });
@@ -145,8 +159,6 @@ export async function deletePaymentFromBudget(firestore: Firestore, userId: stri
     }
     const budgetDocRef = doc(firestore, 'users', userId, 'budgets', budgetId);
     
-    // The payment object from the client might have a JS Date, but in Firestore it's a Timestamp.
-    // We need to fetch the document to get the exact object to remove.
     const budgetDoc = await getDoc(budgetDocRef);
     if (!budgetDoc.exists()) {
         throw new Error("Budget not found.");
@@ -157,8 +169,8 @@ export async function deletePaymentFromBudget(firestore: Firestore, userId: stri
     const paymentToRemove = paymentHistory.find(p => p.id === paymentToDelete.id);
 
     if (!paymentToRemove) {
-      console.warn("Payment to delete not found in the budget's history. It might have been already deleted.");
-      return; // Exit if not found
+      console.warn("Payment to delete not found in history.");
+      return;
     }
 
     await updateDoc(budgetDocRef, {
