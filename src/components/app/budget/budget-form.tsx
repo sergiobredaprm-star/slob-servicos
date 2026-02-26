@@ -60,27 +60,29 @@ import {
 } from '@/components/ui/select';
 import { collection, query } from 'firebase/firestore';
 
+// Tornamos os esquemas base mais flexíveis para evitar erros de validação em abas não selecionadas
+// A validação real de obrigatoriedade será feita no superRefine
 const electricalItemSchema = z.object({
-  name: z.string().min(1, 'A descrição do item é obrigatória.'),
-  quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
-  value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
+  name: z.string().optional(),
+  quantity: z.coerce.number().optional(),
+  value: z.coerce.number().optional(),
 });
 
 const hydraulicItemSchema = z.object({
-  name: z.string().min(1, 'A descrição do item é obrigatória.'),
-  quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
-  value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
+  name: z.string().optional(),
+  quantity: z.coerce.number().optional(),
+  value: z.coerce.number().optional(),
 });
 
 const paintingRoomSchema = z.object({
-  name: z.string().min(1, 'A descrição do item/cômodo é obrigatória.'),
+  name: z.string().optional(),
   type: z.enum(['completo', 'paredes', 'teto']),
   wallPerimeter: z.coerce.number().optional(),
   wallHeight: z.coerce.number().optional(),
   ceilingWidth: z.coerce.number().optional(),
   ceilingLength: z.coerce.number().optional(),
   deductionsArea: z.coerce.number().optional(),
-  calculatedArea: z.coerce.number(),
+  calculatedArea: z.coerce.number().optional(),
 });
 
 const baseFormSchema = z.object({
@@ -121,44 +123,65 @@ const formSchema = z.discriminatedUnion('budgetType', [
   taskBudgetSchema,
 ]).superRefine((data, ctx) => {
     if (data.budgetType === 'task') {
-        if (data.serviceType === 'Elétrica' && data.electricalItems) {
-            data.electricalItems.forEach((item, index) => {
-                if (!item.name || item.name.trim() === '') {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: `Item Elétrica #${index + 1}: A descrição é obrigatória.`,
-                        path: ['electricalItems', index, 'name'],
-                    });
-                }
-            });
+        // Validação OBRIGATÓRIA apenas se o tipo de serviço for Elétrica
+        if (data.serviceType === 'Elétrica') {
+            if (!data.electricalItems || data.electricalItems.length === 0) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Adicione pelo menos um item de elétrica.',
+                    path: ['electricalItems'],
+                });
+            } else {
+                data.electricalItems.forEach((item, index) => {
+                    if (!item.name || item.name.trim() === '') {
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            message: `Item Elétrica #${index + 1}: A descrição é obrigatória.`,
+                            path: ['electricalItems', index, 'name'],
+                        });
+                    }
+                });
+            }
         }
-        if (data.serviceType === 'Hidráulica' && data.hydraulicItems) {
-            data.hydraulicItems.forEach((item, index) => {
-                if (!item.name || item.name.trim() === '') {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: `Item Hidráulica #${index + 1}: A descrição é obrigatória.`,
-                        path: ['hydraulicItems', index, 'name'],
-                    });
-                }
-            });
+        // Validação OBRIGATÓRIA apenas se o tipo de serviço for Hidráulica
+        if (data.serviceType === 'Hidráulica') {
+            if (!data.hydraulicItems || data.hydraulicItems.length === 0) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Adicione pelo menos um item de hidráulica.',
+                    path: ['hydraulicItems'],
+                });
+            } else {
+                data.hydraulicItems.forEach((item, index) => {
+                    if (!item.name || item.name.trim() === '') {
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            message: `Item Hidráulica #${index + 1}: A descrição é obrigatória.`,
+                            path: ['hydraulicItems', index, 'name'],
+                        });
+                    }
+                });
+            }
         }
-        if (data.serviceType === 'Pintura' && (!data.paintingRooms || data.paintingRooms.length === 0)) {
-             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: 'Adicione pelo menos um item/cômodo para o serviço de pintura.',
-                path: ['paintingRooms'],
-            });
-        } else if (data.serviceType === 'Pintura' && data.paintingRooms) {
-             data.paintingRooms.forEach((room, index) => {
-                if (!room.name || room.name.trim() === '') {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: `Item Pintura #${index + 1}: A descrição/nome é obrigatória.`,
-                        path: ['paintingRooms', index, 'name'],
-                    });
-                }
-            });
+        // Validação OBRIGATÓRIA apenas se o tipo de serviço for Pintura
+        if (data.serviceType === 'Pintura') {
+            if (!data.paintingRooms || data.paintingRooms.length === 0) {
+                 ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Adicione pelo menos um item/cômodo para o serviço de pintura.',
+                    path: ['paintingRooms'],
+                });
+            } else {
+                 data.paintingRooms.forEach((room, index) => {
+                    if (!room.name || room.name.trim() === '') {
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            message: `Item Pintura #${index + 1}: A descrição/nome é obrigatória.`,
+                            path: ['paintingRooms', index, 'name'],
+                        });
+                    }
+                });
+            }
         }
     }
 });
@@ -392,9 +415,9 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
           const totalArea = values.paintingRooms.reduce((acc, room) => acc + calculateRoomArea(room), 0);
           laborCost = totalArea * values.sqMetersPrice * values.paintCoats;
         } else if (values.serviceType === 'Elétrica' && values.electricalItems) {
-          laborCost = values.electricalItems.reduce((acc, item) => acc + (item.quantity * item.value), 0);
+          laborCost = values.electricalItems.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0);
         } else if (values.serviceType === 'Hidráulica' && values.hydraulicItems) {
-          laborCost = values.hydraulicItems.reduce((acc, item) => acc + (item.quantity * item.value), 0);
+          laborCost = values.hydraulicItems.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0);
         } else if (values.profit) { // profit from form is the labor cost
           laborCost = values.profit;
         }
