@@ -36,7 +36,7 @@ import {
   CardDescription
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Sparkles, Loader2, Check, ChevronsUpDown, Trash2, PlusCircle } from 'lucide-react';
+import { CalendarIcon, Sparkles, Loader2, Check, ChevronsUpDown, Trash2, PlusCircle, ListSearch } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
@@ -126,7 +126,7 @@ const formSchema = z.discriminatedUnion('budgetType', [
                 if (!item.name || item.name.trim() === '') {
                     ctx.addIssue({
                         code: z.ZodIssueCode.custom,
-                        message: 'A descrição do item de elétrica é obrigatória.',
+                        message: `Item Elétrica #${index + 1}: A descrição é obrigatória.`,
                         path: ['electricalItems', index, 'name'],
                     });
                 }
@@ -137,7 +137,7 @@ const formSchema = z.discriminatedUnion('budgetType', [
                 if (!item.name || item.name.trim() === '') {
                     ctx.addIssue({
                         code: z.ZodIssueCode.custom,
-                        message: 'A descrição do item de hidráulica é obrigatória.',
+                        message: `Item Hidráulica #${index + 1}: A descrição é obrigatória.`,
                         path: ['hydraulicItems', index, 'name'],
                     });
                 }
@@ -814,6 +814,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
           <Card className="bg-muted/50 p-6">
             <CardHeader className="p-0 pb-4">
               <CardTitle className="text-lg">Itens do Serviço de Elétrica</CardTitle>
+              <CardDescription>Descreva cada item e seu valor unitário.</CardDescription>
             </CardHeader>
             <div className="space-y-4">
               {electricalFields.map((field, index) => {
@@ -823,39 +824,49 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                 const itemTotal = quantity * value;
 
                 return (
-                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-end gap-4">
+                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-end gap-2 border-b pb-4 last:border-0 last:pb-0">
                       <FormField
                         control={form.control}
                         name={`electricalItems.${index}.name`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className={cn(index > 0 && "sr-only")}>Item</FormLabel>
-                             <Select
-                              onValueChange={(value) => {
-                                const selectedItem = sortedElectricalServiceItems?.find(item => item.name === value);
-                                if (selectedItem) {
-                                  electricalUpdate(index, { 
-                                    name: selectedItem.name, 
-                                    value: selectedItem.defaultValue,
-                                    quantity: 1,
-                                  });
-                                } else {
-                                  field.onChange(value);
-                                }
-                              }}
-                              defaultValue={field.value}
-                            >
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Descrição do Item</FormLabel>
+                            <div className="flex gap-2">
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder={isLoadingElectricalItems ? "Carregando..." : "Selecione um item"} />
-                                </SelectTrigger>
+                                <Input placeholder="Ex: Instalação de ponto de tomada" {...field} />
                               </FormControl>
-                              <SelectContent>
-                                {sortedElectricalServiceItems?.map(item => (
-                                  <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" size="icon" title="Itens Salvos">
+                                    <ListSearch className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-0">
+                                  <Command>
+                                    <CommandInput placeholder="Procurar item..." />
+                                    <CommandList>
+                                      <CommandEmpty>Nenhum item salvo.</CommandEmpty>
+                                      <CommandGroup heading="Itens Salvos">
+                                        {sortedElectricalServiceItems?.map(savedItem => (
+                                          <CommandItem
+                                            key={savedItem.id}
+                                            onSelect={() => {
+                                              electricalUpdate(index, { 
+                                                name: savedItem.name, 
+                                                value: savedItem.defaultValue,
+                                                quantity: 1,
+                                              });
+                                            }}
+                                          >
+                                            {savedItem.name} ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(savedItem.defaultValue)})
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -867,7 +878,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                           <FormItem>
                             <FormLabel className={cn(index > 0 && "sr-only")}>Qtd.</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="1" {...field} className="w-20" />
+                              <Input type="number" placeholder="1" {...field} className="w-16" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -878,17 +889,17 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                         name={`electricalItems.${index}.value`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className={cn(index > 0 && "sr-only")}>Valor Unit. (R$)</FormLabel>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>R$ Unit.</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="50.00" {...field} className="w-28" />
+                              <Input type="number" placeholder="50.00" {...field} className="w-24" />
                             </FormControl>
                              <FormMessage />
                           </FormItem>
                         )}
                       />
                        <div className="space-y-2">
-                        <FormLabel className={cn(index > 0 && "sr-only")}>Valor Total (R$)</FormLabel>
-                        <div className="flex h-10 w-28 items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
+                        <FormLabel className={cn(index > 0 && "sr-only")}>R$ Total</FormLabel>
+                        <div className="flex h-10 w-24 items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(itemTotal)}
                         </div>
                       </div>
@@ -921,6 +932,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
           <Card className="bg-muted/50 p-6">
             <CardHeader className="p-0 pb-4">
               <CardTitle className="text-lg">Itens do Serviço de Hidráulica</CardTitle>
+              <CardDescription>Descreva cada item e seu valor unitário.</CardDescription>
             </CardHeader>
             <div className="space-y-4">
               {hydraulicFields.map((field, index) => {
@@ -930,39 +942,49 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                 const itemTotal = quantity * value;
 
                 return (
-                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-end gap-4">
+                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-end gap-2 border-b pb-4 last:border-0 last:pb-0">
                       <FormField
                         control={form.control}
                         name={`hydraulicItems.${index}.name`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className={cn(index > 0 && "sr-only")}>Item</FormLabel>
-                             <Select
-                              onValueChange={(value) => {
-                                const selectedItem = sortedHydraulicServiceItems?.find(item => item.name === value);
-                                if (selectedItem) {
-                                  hydraulicUpdate(index, { 
-                                    name: selectedItem.name, 
-                                    value: selectedItem.defaultValue,
-                                    quantity: 1,
-                                  });
-                                } else {
-                                  field.onChange(value);
-                                }
-                              }}
-                              defaultValue={field.value}
-                            >
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Descrição do Item</FormLabel>
+                            <div className="flex gap-2">
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder={isLoadingHydraulicItems ? "Carregando..." : "Selecione um item"} />
-                                </SelectTrigger>
+                                <Input placeholder="Ex: Instalação de ponto de água" {...field} />
                               </FormControl>
-                              <SelectContent>
-                                {sortedHydraulicServiceItems?.map(item => (
-                                  <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" size="icon" title="Itens Salvos">
+                                    <ListSearch className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-0">
+                                  <Command>
+                                    <CommandInput placeholder="Procurar item..." />
+                                    <CommandList>
+                                      <CommandEmpty>Nenhum item salvo.</CommandEmpty>
+                                      <CommandGroup heading="Itens Salvos">
+                                        {sortedHydraulicServiceItems?.map(savedItem => (
+                                          <CommandItem
+                                            key={savedItem.id}
+                                            onSelect={() => {
+                                              hydraulicUpdate(index, { 
+                                                name: savedItem.name, 
+                                                value: savedItem.defaultValue,
+                                                quantity: 1,
+                                              });
+                                            }}
+                                          >
+                                            {savedItem.name} ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(savedItem.defaultValue)})
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -974,7 +996,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                           <FormItem>
                             <FormLabel className={cn(index > 0 && "sr-only")}>Qtd.</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="1" {...field} className="w-20" />
+                              <Input type="number" placeholder="1" {...field} className="w-16" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -985,17 +1007,17 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                         name={`hydraulicItems.${index}.value`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className={cn(index > 0 && "sr-only")}>Valor Unit. (R$)</FormLabel>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>R$ Unit.</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="50.00" {...field} className="w-28" />
+                              <Input type="number" placeholder="50.00" {...field} className="w-24" />
                             </FormControl>
                              <FormMessage />
                           </FormItem>
                         )}
                       />
                        <div className="space-y-2">
-                        <FormLabel className={cn(index > 0 && "sr-only")}>Valor Total (R$)</FormLabel>
-                        <div className="flex h-10 w-28 items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
+                        <FormLabel className={cn(index > 0 && "sr-only")}>R$ Total</FormLabel>
+                        <div className="flex h-10 w-24 items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(itemTotal)}
                         </div>
                       </div>
