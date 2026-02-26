@@ -61,15 +61,15 @@ import {
 import { collection, query } from 'firebase/firestore';
 
 const electricalItemSchema = z.object({
-  name: z.string(),
-  quantity: z.coerce.number(),
-  value: z.coerce.number(),
+  name: z.string().min(1, 'A descrição do item é obrigatória.'),
+  quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
+  value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
 });
 
 const hydraulicItemSchema = z.object({
-  name: z.string(),
-  quantity: z.coerce.number(),
-  value: z.coerce.number(),
+  name: z.string().min(1, 'A descrição do item é obrigatória.'),
+  quantity: z.coerce.number().min(1, 'A quantidade deve ser pelo menos 1.'),
+  value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
 });
 
 const paintingRoomSchema = z.object({
@@ -126,7 +126,7 @@ const formSchema = z.discriminatedUnion('budgetType', [
                 if (!item.name || item.name.trim() === '') {
                     ctx.addIssue({
                         code: z.ZodIssueCode.custom,
-                        message: 'A descrição do item é obrigatória.',
+                        message: 'A descrição do item de elétrica é obrigatória.',
                         path: ['electricalItems', index, 'name'],
                     });
                 }
@@ -137,10 +137,17 @@ const formSchema = z.discriminatedUnion('budgetType', [
                 if (!item.name || item.name.trim() === '') {
                     ctx.addIssue({
                         code: z.ZodIssueCode.custom,
-                        message: 'A descrição do item é obrigatória.',
+                        message: 'A descrição do item de hidráulica é obrigatória.',
                         path: ['hydraulicItems', index, 'name'],
                     });
                 }
+            });
+        }
+        if (data.serviceType === 'Pintura' && (!data.paintingRooms || data.paintingRooms.length === 0)) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Adicione pelo menos um cômodo para o serviço de pintura.',
+                path: ['paintingRooms'],
             });
         }
     }
@@ -317,32 +324,30 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
 
 
   const getFirstErrorMessage = (errors: FieldErrors): string | undefined => {
-    for (const key in errors) {
-      const error = errors[key];
-      if (typeof error === 'object' && error !== null && 'message' in error) {
-        return error.message as string;
-      }
-      if (Array.isArray(error)) {
-        for (const item of error) {
-          const nestedError = getFirstErrorMessage(item);
-          if (nestedError) return nestedError;
+    const findMessage = (obj: any): string | undefined => {
+      if (!obj) return undefined;
+      if (typeof obj.message === 'string') return obj.message;
+      
+      for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          const result = findMessage(obj[key]);
+          if (result) return result;
         }
       }
-      if (typeof error === 'object' && error !== null) {
-        const nestedError = getFirstErrorMessage(error as FieldErrors);
-        if (nestedError) return nestedError;
-      }
-    }
-    return undefined;
+      return undefined;
+    };
+    
+    return findMessage(errors);
   };
   
   function onValidationErrors(errors: FieldErrors<z.infer<typeof formSchema>>) {
+    console.log('Form Validation Errors:', errors);
     const firstError = getFirstErrorMessage(errors);
 
     toast({
       variant: 'destructive',
-      title: 'Erro de Validação',
-      description: firstError || 'Por favor, verifique os campos do formulário.',
+      title: 'Campo Obrigatório ou Inválido',
+      description: firstError || 'Por favor, verifique se todos os campos obrigatórios foram preenchidos corretamente.',
     });
   }
   
@@ -405,7 +410,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
          toast({
           variant: 'destructive',
           title: 'Erro ao Salvar',
-          description: `Não foi possível salvar o orçamento. Verifique os campos e tente novamente.`,
+          description: `Não foi possível salvar o orçamento no servidor. Tente novamente mais tarde.`,
         });
       }
     });
@@ -617,7 +622,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
             <div className="space-y-6">
               {paintingFields.map((field, index) => {
                 const room = paintingRooms?.[index];
-                const area = calculateRoomArea(room);
+                const area = calculateRoomArea(room || {});
 
                 return (
                   <div key={field.id} className="p-4 border rounded-lg bg-background space-y-4">
@@ -673,7 +678,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-2">
-                      {(room.type === 'paredes' || room.type === 'completo') && (
+                      {(room?.type === 'paredes' || room?.type === 'completo') && (
                         <>
                           <FormField
                             control={form.control}
@@ -703,7 +708,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                           />
                         </>
                       )}
-                      {(room.type === 'teto' || room.type === 'completo') && (
+                      {(room?.type === 'teto' || room?.type === 'completo') && (
                         <>
                           <FormField
                             control={form.control}
@@ -834,13 +839,15 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                                     value: selectedItem.defaultValue,
                                     quantity: 1,
                                   });
+                                } else {
+                                  field.onChange(value);
                                 }
                               }}
                               defaultValue={field.value}
                             >
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder={isLoadingElectricalItems ? "Carregando..." : "Selecione um item ou digite"} />
+                                  <SelectValue placeholder={isLoadingElectricalItems ? "Carregando..." : "Selecione um item"} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -939,13 +946,15 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                                     value: selectedItem.defaultValue,
                                     quantity: 1,
                                   });
+                                } else {
+                                  field.onChange(value);
                                 }
                               }}
                               defaultValue={field.value}
                             >
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder={isLoadingHydraulicItems ? "Carregando..." : "Selecione um item ou digite"} />
+                                  <SelectValue placeholder={isLoadingHydraulicItems ? "Carregando..." : "Selecione um item"} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
