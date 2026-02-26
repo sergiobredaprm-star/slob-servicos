@@ -1,3 +1,4 @@
+
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -23,12 +24,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { settings } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { CompanyProfile, ElectricalServiceItem, HydraulicServiceItem, ServiceTypeItem } from '@/lib/types';
+import { CompanyProfile, ElectricalServiceItem, HydraulicServiceItem, PaintingServiceItem, ServiceTypeItem } from '@/lib/types';
 import { useEffect, useState, useTransition, useRef } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { getCompanyProfile, saveCompanyProfile } from '@/lib/firebase/company-services';
 import { saveElectricalItem, deleteElectricalItem } from '@/lib/firebase/electrical-item-services';
 import { saveHydraulicItem, deleteHydraulicItem } from '@/lib/firebase/hydraulic-item-services';
+import { savePaintingItem, deletePaintingItem } from '@/lib/firebase/painting-item-services';
 import { saveServiceType, deleteServiceType } from '@/lib/firebase/service-type-services';
 import { Loader2, Trash2, PlusCircle, Upload, Save } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
@@ -87,6 +89,16 @@ const hydraulicItemsFormSchema = z.object({
   items: z.array(hydraulicItemSchema),
 });
 
+const paintingItemSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'A descrição é obrigatória.'),
+  defaultValue: z.coerce.number().min(0, 'O valor deve ser positivo.'),
+});
+
+const paintingItemsFormSchema = z.object({
+  items: z.array(paintingItemSchema),
+});
+
 const serviceTypeItemSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(2, 'O nome do serviço deve ter pelo menos 2 caracteres.'),
@@ -98,6 +110,7 @@ const serviceTypesFormSchema = z.object({
 
 type ElectricalItemsFormData = z.infer<typeof electricalItemsFormSchema>;
 type HydraulicItemsFormData = z.infer<typeof hydraulicItemsFormSchema>;
+type PaintingItemsFormData = z.infer<typeof paintingItemsFormSchema>;
 type ServiceTypesFormData = z.infer<typeof serviceTypesFormSchema>;
 
 
@@ -109,6 +122,7 @@ export default function SettingsPage() {
   const [isUserSubmitPending, startUserSubmitTransition] = useTransition();
   const [isElectricalSubmitPending, startElectricalSubmitTransition] = useTransition();
   const [isHydraulicSubmitPending, startHydraulicSubmitTransition] = useTransition();
+  const [isPaintingSubmitPending, startPaintingSubmitTransition] = useTransition();
   const [isServiceTypeSubmitPending, startServiceTypeSubmitTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
@@ -192,6 +206,31 @@ export default function SettingsPage() {
     }
   }, [hydraulicItems, hydraulicReplace]);
 
+  const paintingItemsQuery = useMemoFirebase(
+    () => user && firestore ? query(collection(firestore, 'users', user.uid, 'paintingServiceItems')) : null,
+    [firestore, user]
+  );
+
+  const { data: paintingItems, isLoading: isLoadingPaintingItems } = useCollection<PaintingServiceItem>(paintingItemsQuery);
+
+  const paintingItemsForm = useForm<PaintingItemsFormData>({
+    resolver: zodResolver(paintingItemsFormSchema),
+    defaultValues: {
+      items: [],
+    },
+  });
+
+  const { fields: paintingFields, append: paintingAppend, remove: paintingRemove, replace: paintingReplace } = useFieldArray({
+    control: paintingItemsForm.control,
+    name: 'items',
+  });
+
+  useEffect(() => {
+    if (paintingItems) {
+      paintingReplace(paintingItems);
+    }
+  }, [paintingItems, paintingReplace]);
+
   const serviceTypesQuery = useMemoFirebase(
     () => user && firestore ? query(collection(firestore, 'users', user.uid, 'serviceTypes')) : null,
     [firestore, user]
@@ -229,8 +268,6 @@ export default function SettingsPage() {
           }
         } catch (error) {
            // O erro de permissão já é tratado globalmente pelo errorEmitter
-           // e exibido no overlay de desenvolvimento, então não precisamos
-           // de um toast aqui para não duplicar as mensagens.
         }
       }
     }
@@ -312,7 +349,6 @@ export default function SettingsPage() {
         
         if (values.photoFile) {
           photoURL = await uploadProfileImage(firebaseApp, auth.currentUser.uid, values.photoFile);
-          // Add new image to the top of the gallery
           setGalleryImages(prev => [photoURL, ...prev]);
         }
 
@@ -351,14 +387,14 @@ export default function SettingsPage() {
                 title: "Foto de Perfil Atualizada!",
                 description: "Sua foto foi alterada com sucesso.",
             });
-            setSelectedGalleryImage(null); // Reset selection
+            setSelectedGalleryImage(null);
         } catch(error: any) {
             toast({
                 variant: "destructive",
                 title: "Erro ao Atualizar Foto",
                 description: error.message || "Não foi possível salvar esta imagem.",
             });
-            setPreviewImage(user.photoURL || null); // Revert preview on error
+            setPreviewImage(user.photoURL || null);
         }
     });
   }
@@ -456,6 +492,53 @@ export default function SettingsPage() {
       }
     }
     hydraulicRemove(index);
+  }
+
+  function onPaintingItemsSubmit(values: PaintingItemsFormData) {
+    if (!user || !firestore) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
+      return;
+    }
+    startPaintingSubmitTransition(async () => {
+      try {
+        await Promise.all(values.items.map(item => {
+          const { id, ...itemData } = item;
+          return savePaintingItem(firestore, user.uid, itemData, id);
+        }));
+        
+        toast({
+          title: 'Itens de Pintura Salvos!',
+          description: 'Sua lista de preços de pintura foi atualizada.',
+        });
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao Salvar',
+          description: 'Não foi possível salvar os itens de pintura.',
+        });
+      }
+    });
+  }
+
+  async function handleRemovePaintingItem(index: number, itemId?: string) {
+    if (!user || !firestore) return;
+    if (itemId) {
+      try {
+        await deletePaintingItem(firestore, user.uid, itemId);
+        toast({
+          title: 'Item Removido',
+          description: 'O item foi removido da sua lista.',
+        });
+      } catch(e) {
+         toast({
+          variant: 'destructive',
+          title: 'Erro ao Remover',
+          description: 'Não foi possível remover o item.',
+        });
+      }
+    }
+    paintingRemove(index);
   }
 
   function onServiceTypesSubmit(values: ServiceTypesFormData) {
@@ -565,7 +648,7 @@ export default function SettingsPage() {
                                     if (file) {
                                       field.onChange(file);
                                       setPreviewImage(URL.createObjectURL(file));
-                                      setSelectedGalleryImage(null); // Deseleciona da galeria ao fazer novo upload
+                                      setSelectedGalleryImage(null);
                                     }
                                   }}
                                 />
@@ -900,6 +983,86 @@ export default function SettingsPage() {
                           <Button type="submit" disabled={isHydraulicSubmitPending || isLoadingHydraulicItems}>
                             {isHydraulicSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Salvar Itens de Hidráulica
+                          </Button>
+                        </form>
+                      </Form>
+                    </CardContent>
+                  </AccordionContent>
+                </Card>
+              </AccordionItem>
+              <AccordionItem value="painting">
+                <Card>
+                  <AccordionTrigger className="p-6">
+                    <CardHeader className="p-0 text-left">
+                      <CardTitle>Itens de Serviço de Pintura</CardTitle>
+                      <CardDescription>
+                        Defina preços por m² para diferentes tipos de serviço de pintura.
+                      </CardDescription>
+                    </CardHeader>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <CardContent>
+                      <Form {...paintingItemsForm}>
+                        <form onSubmit={paintingItemsForm.handleSubmit(onPaintingItemsSubmit)} className="space-y-6">
+                          {isLoadingPaintingItems ? (
+                            <div className="flex justify-center items-center h-24">
+                              <Loader2 className="h-6 w-6 animate-spin" />
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {paintingFields.map((field, index) => (
+                                <div key={field.id} className="flex items-end gap-4">
+                                  <FormField
+                                    control={paintingItemsForm.control}
+                                    name={`items.${index}.name`}
+                                    render={({ field }) => (
+                                      <FormItem className="flex-grow">
+                                        <FormLabel className={cn(index > 0 && 'sr-only')}>Descrição do Item (ex: Massa Corrida)</FormLabel>
+                                        <FormControl>
+                                          <Input placeholder="Ex: Pintura com Massa Corrida" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={paintingItemsForm.control}
+                                    name={`items.${index}.defaultValue`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className={cn(index > 0 && 'sr-only')}>R$ por m²</FormLabel>
+                                        <FormControl>
+                                          <Input type="number" placeholder="25.00" {...field} className="w-36" />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="icon"
+                                    onClick={() => handleRemovePaintingItem(index, field.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => paintingAppend({ name: '', defaultValue: 0 })}
+                              >
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Adicionar Novo Item de Pintura
+                              </Button>
+                            </div>
+                          )}
+
+                          <Button type="submit" disabled={isPaintingSubmitPending || isLoadingPaintingItems}>
+                            {isPaintingSubmitPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Salvar Itens de Pintura
                           </Button>
                         </form>
                       </Form>

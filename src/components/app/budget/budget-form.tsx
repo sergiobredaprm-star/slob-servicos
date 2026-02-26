@@ -47,7 +47,7 @@ import { getTaskSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Budget, Client, ServiceType, ElectricalItem, ElectricalServiceItem, HydraulicItem, HydraulicServiceItem, ServiceTypeItem, PaintingRoom } from '@/lib/types';
+import { Budget, Client, ServiceType, ElectricalItem, ElectricalServiceItem, HydraulicItem, HydraulicServiceItem, PaintingServiceItem, ServiceTypeItem, PaintingRoom } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { saveBudget } from '@/lib/firebase/services';
@@ -73,7 +73,7 @@ const hydraulicItemSchema = z.object({
 });
 
 const paintingRoomSchema = z.object({
-  name: z.string().min(1, 'O nome do cômodo é obrigatório.'),
+  name: z.string().min(1, 'A descrição do item/cômodo é obrigatória.'),
   type: z.enum(['completo', 'paredes', 'teto']),
   wallPerimeter: z.coerce.number().optional(),
   wallHeight: z.coerce.number().optional(),
@@ -146,8 +146,18 @@ const formSchema = z.discriminatedUnion('budgetType', [
         if (data.serviceType === 'Pintura' && (!data.paintingRooms || data.paintingRooms.length === 0)) {
              ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: 'Adicione pelo menos um cômodo para o serviço de pintura.',
+                message: 'Adicione pelo menos um item/cômodo para o serviço de pintura.',
                 path: ['paintingRooms'],
+            });
+        } else if (data.serviceType === 'Pintura' && data.paintingRooms) {
+             data.paintingRooms.forEach((room, index) => {
+                if (!room.name || room.name.trim() === '') {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: `Item Pintura #${index + 1}: A descrição/nome é obrigatória.`,
+                        path: ['paintingRooms', index, 'name'],
+                    });
+                }
             });
         }
     }
@@ -186,14 +196,20 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
     [firestore, user]
   );
   
-  const { data: electricalServiceItems, isLoading: isLoadingElectricalItems } = useCollection<ElectricalServiceItem>(electricalItemsQuery);
+  const { data: electricalServiceItems } = useCollection<ElectricalServiceItem>(electricalItemsQuery);
   
   const hydraulicItemsQuery = useMemoFirebase(
     () => user && firestore ? query(collection(firestore, 'users', user.uid, 'hydraulicServiceItems')) : null,
     [firestore, user]
   );
 
-  const { data: hydraulicServiceItems, isLoading: isLoadingHydraulicItems } = useCollection<HydraulicServiceItem>(hydraulicItemsQuery);
+  const { data: hydraulicServiceItems } = useCollection<HydraulicServiceItem>(hydraulicItemsQuery);
+
+  const paintingItemsQuery = useMemoFirebase(
+    () => user && firestore ? query(collection(firestore, 'users', user.uid, 'paintingServiceItems')) : null,
+    [firestore, user]
+  );
+  const { data: paintingServiceItems } = useCollection<PaintingServiceItem>(paintingItemsQuery);
 
   const serviceTypesQuery = useMemoFirebase(
     () => user && firestore ? query(collection(firestore, 'users', user.uid, 'serviceTypes')) : null,
@@ -224,6 +240,11 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
     if (!hydraulicServiceItems) return [];
     return [...hydraulicServiceItems].sort((a, b) => a.name.localeCompare(b.name));
   }, [hydraulicServiceItems]);
+
+  const sortedPaintingServiceItems = useMemo(() => {
+    if (!paintingServiceItems) return [];
+    return [...paintingServiceItems].sort((a, b) => a.name.localeCompare(b.name));
+  }, [paintingServiceItems]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -390,7 +411,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
         ...values,
         total: total,
         materialCost: materialCost,
-        profit: laborCost, // Storing labor cost in the profit field
+        profit: laborCost,
         userId: user.uid,
         clientId: values.clientId,
         serviceType: values.serviceType as ServiceType,
@@ -616,8 +637,8 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
         {budgetType === 'task' && serviceType === 'Pintura' && (
            <Card className="bg-muted/50 p-6">
              <CardHeader className="p-0 pb-4">
-                <CardTitle className="text-lg">Cálculo de Pintura por Cômodo</CardTitle>
-                <CardDescription>Adicione as dimensões de cada ambiente para um cálculo preciso.</CardDescription>
+                <CardTitle className="text-lg">Detalhamento de Pintura</CardTitle>
+                <CardDescription>Adicione a descrição do serviço/cômodo e as dimensões.</CardDescription>
             </CardHeader>
             <div className="space-y-6">
               {paintingFields.map((field, index) => {
@@ -627,7 +648,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                 return (
                   <div key={field.id} className="p-4 border rounded-lg bg-background space-y-4">
                     <div className="flex justify-between items-center">
-                      <h4 className="font-medium">Ambiente #{index + 1}</h4>
+                      <h4 className="font-medium">Item #{index + 1}</h4>
                       <Button
                         type="button"
                         variant="destructive"
@@ -645,10 +666,43 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                         name={`paintingRooms.${index}.name`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nome do Cômodo/Área</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ex: Quarto Casal" {...field} />
-                            </FormControl>
+                            <FormLabel>Descrição do Item/Cômodo</FormLabel>
+                            <div className="flex gap-2">
+                              <FormControl>
+                                <Input placeholder="Ex: Pintura Quarto Casal" {...field} />
+                              </FormControl>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" size="icon" title="Itens Salvos">
+                                    <Search className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-0">
+                                  <Command>
+                                    <CommandInput placeholder="Procurar item..." />
+                                    <CommandList>
+                                      <CommandEmpty>Nenhum item salvo.</CommandEmpty>
+                                      <CommandGroup heading="Serviços de Pintura">
+                                        {sortedPaintingServiceItems?.map(savedItem => (
+                                          <CommandItem
+                                            key={savedItem.id}
+                                            onSelect={() => {
+                                              paintingUpdate(index, {
+                                                ...paintingRooms![index],
+                                                name: savedItem.name,
+                                              });
+                                              form.setValue('sqMetersPrice', savedItem.defaultValue);
+                                            }}
+                                          >
+                                            {savedItem.name} ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(savedItem.defaultValue)}/m²)
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -658,7 +712,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                         name={`paintingRooms.${index}.type`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>O que será pintado?</FormLabel>
+                            <FormLabel>Tipo de Área</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
@@ -769,7 +823,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                 onClick={() => paintingAppend({ name: '', type: 'completo', calculatedArea: 0, deductionsArea: 0 })}
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar Outro Cômodo
+                Adicionar Outro Item de Pintura
               </Button>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-6">

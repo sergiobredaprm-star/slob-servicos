@@ -165,6 +165,26 @@
       },
       "required": ["name", "defaultValue", "userId"]
     },
+    "PaintingServiceItem": {
+      "title": "Painting Service Item",
+      "type": "object",
+      "description": "Represents a predefined item for painting services with a default value per m2.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Description of the painting service item (e.g., 'Pintura com Massa Corrida')."
+        },
+        "defaultValue": {
+          "type": "number",
+          "description": "The default price per m2 for this service item."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this service item."
+        }
+      },
+      "required": ["name", "defaultValue", "userId"]
+    },
     "ServiceTypeItem": {
       "title": "Service Type Item",
       "type": "object",
@@ -422,6 +442,10 @@
     "/users/{userId}/hydraulicServiceItems/{itemId}": {
       "schema": { "$ref": "#/entities/HydraulicServiceItem" },
       "description": "Sub-collection for predefined hydraulic service items for a specific user."
+    },
+    "/users/{userId}/paintingServiceItems/{itemId}": {
+      "schema": { "$ref": "#/entities/PaintingServiceItem" },
+      "description": "Sub-collection for predefined painting service items for a specific user."
     },
     "/users/{userId}/serviceTypes/{serviceTypeId}": {
       "schema": { "$ref": "#/entities/ServiceTypeItem" },

@@ -39,6 +39,13 @@ export type HydraulicServiceItem = {
   userId: string;
 };
 
+export type PaintingServiceItem = {
+  id: string;
+  name: string;
+  defaultValue: number;
+  userId: string;
+};
+
 export type ServiceTypeItem = {
   id: string;
   name: string;
