@@ -1,3 +1,4 @@
+
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm, FieldErrors } from 'react-hook-form';
@@ -78,6 +79,7 @@ const paintingRoomSchema = z.object({
   wallHeight: z.coerce.number().optional(),
   ceilingWidth: z.coerce.number().optional(),
   ceilingLength: z.coerce.number().optional(),
+  deductionsArea: z.coerce.number().optional(),
   calculatedArea: z.coerce.number(),
 });
 
@@ -229,7 +231,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
       clientId: initialData.clientId || '',
       electricalItems: initialData.electricalItems && initialData.electricalItems.length > 0 ? initialData.electricalItems : [{ name: '', quantity: 1, value: 0 }],
       hydraulicItems: initialData.hydraulicItems && initialData.hydraulicItems.length > 0 ? initialData.hydraulicItems : [{ name: '', quantity: 1, value: 0 }],
-      paintingRooms: initialData.paintingRooms && initialData.paintingRooms.length > 0 ? initialData.paintingRooms : [{ name: '', type: 'completo', calculatedArea: 0 }],
+      paintingRooms: initialData.paintingRooms && initialData.paintingRooms.length > 0 ? initialData.paintingRooms : [{ name: '', type: 'completo', calculatedArea: 0, deductionsArea: 0 }],
     } : {
       clientId: preselectedClientId || '',
       clientName: preselectedClientName || '',
@@ -248,7 +250,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
       status: 'prospecção',
       sqMetersPrice: 0,
       paintCoats: 2,
-      paintingRooms: [{ name: '', type: 'completo', calculatedArea: 0 }],
+      paintingRooms: [{ name: '', type: 'completo', calculatedArea: 0, deductionsArea: 0 }],
       electricalItems: [{ name: '', quantity: 1, value: 0 }],
       hydraulicItems: [{ name: '', quantity: 1, value: 0 }],
       issueInvoice: false,
@@ -302,7 +304,11 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
     if (room.type === 'teto' || room.type === 'completo') {
       area += (room.ceilingWidth || 0) * (room.ceilingLength || 0);
     }
-    return parseFloat(area.toFixed(2));
+    
+    // Deduct doors/windows area
+    const netArea = area - (room.deductionsArea || 0);
+    
+    return parseFloat(Math.max(0, netArea).toFixed(2));
   };
 
   const totalPaintingArea = useMemo(() => {
@@ -666,7 +672,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-2">
                       {(room.type === 'paredes' || room.type === 'completo') && (
                         <>
                           <FormField
@@ -727,10 +733,24 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                           />
                         </>
                       )}
+                      <FormField
+                        control={form.control}
+                        name={`paintingRooms.${index}.deductionsArea`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Deduções (m²)</FormLabel>
+                            <FormControl>
+                              <Input type="number" step="0.01" placeholder="Ex: 2.1" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormDescription>Portas/Janelas</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                     <div className="flex justify-end pt-2">
                       <div className="text-sm font-semibold bg-muted px-3 py-1 rounded">
-                        Área do Cômodo: {area.toFixed(2)} m²
+                        Área Líquida: {area.toFixed(2)} m²
                       </div>
                     </div>
                   </div>
@@ -741,7 +761,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => paintingAppend({ name: '', type: 'completo', calculatedArea: 0 })}
+                onClick={() => paintingAppend({ name: '', type: 'completo', calculatedArea: 0, deductionsArea: 0 })}
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Adicionar Outro Cômodo

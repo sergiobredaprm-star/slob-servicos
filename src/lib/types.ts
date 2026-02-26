@@ -1,3 +1,4 @@
+
 'use client';
 import { Timestamp } from 'firebase/firestore';
 
@@ -53,6 +54,7 @@ export type PaintingRoom = {
   wallHeight?: number;
   ceilingWidth?: number;
   ceilingLength?: number;
+  deductionsArea?: number;
   calculatedArea: number;
 };
 

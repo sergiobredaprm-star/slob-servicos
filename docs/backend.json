@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -80,6 +81,7 @@
         "wallHeight": { "type": "number" },
         "ceilingWidth": { "type": "number" },
         "ceilingLength": { "type": "number" },
+        "deductionsArea": { "type": "number", "description": "Area to be deducted (doors, windows, etc.)" },
         "calculatedArea": { "type": "number" }
       }
     },

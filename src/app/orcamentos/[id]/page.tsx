@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Card,
@@ -270,10 +271,11 @@ export default function BudgetDetailsPage() {
         message += '*Detalhamento de Pintura por Cômodo:*\n';
         budget.paintingRooms.forEach((room) => {
           const typeLabel = room.type === 'completo' ? 'Completo (Parede+Teto)' : room.type === 'paredes' ? 'Só Paredes' : 'Só Teto';
-          message += ` • *${room.name}*: ${typeLabel} (${room.calculatedArea.toFixed(2)} m²)\n`;
+          const deductions = room.deductionsArea && room.deductionsArea > 0 ? ` [Dedução: ${room.deductionsArea}m²]` : '';
+          message += ` • *${room.name}*: ${typeLabel} (${room.calculatedArea.toFixed(2)} m²)${deductions}\n`;
         });
         const totalArea = budget.paintingRooms.reduce((acc, r) => acc + r.calculatedArea, 0);
-        message += `\n*Área Total:* ${totalArea.toFixed(2)} m²\n`;
+        message += `\n*Área Líquida Total:* ${totalArea.toFixed(2)} m²\n`;
         message += `*Valor por m²:* ${formatCurrency(budget.sqMetersPrice || 0)}\n`;
         message += `*Nº de Demãos:* ${budget.paintCoats || 1}\n\n`;
       } else if (budget.serviceType === 'Pintura' && budget.wallHeight && budget.wallWidth) {
@@ -492,21 +494,25 @@ export default function BudgetDetailsPage() {
                 {budget.paintingRooms.map((room, idx) => (
                   <Card key={idx} className="bg-muted/30">
                     <CardContent className="p-4 flex justify-between items-center">
-                      <div>
+                      <div className="space-y-1">
                         <p className="font-medium text-base">{room.name || `Cômodo ${idx + 1}`}</p>
-                        <p className="text-muted-foreground capitalize">
+                        <p className="text-muted-foreground capitalize text-xs">
                           {room.type === 'completo' ? 'Cômodo Completo' : room.type === 'paredes' ? 'Só Paredes' : 'Só Teto'}
                         </p>
+                        {room.deductionsArea ? (
+                          <p className="text-xs text-destructive">Desconto aplicado: {room.deductionsArea} m²</p>
+                        ) : null}
                       </div>
                       <div className="text-right">
                         <p className="font-bold">{room.calculatedArea.toFixed(2)} m²</p>
+                        <p className="text-[10px] text-muted-foreground italic">Área Líquida</p>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
               <div className="flex justify-end gap-8 font-medium">
-                <p>Total de Área: <span className="font-bold">{budget.paintingRooms.reduce((acc, r) => acc + r.calculatedArea, 0).toFixed(2)} m²</span></p>
+                <p>Total de Área Líquida: <span className="font-bold">{budget.paintingRooms.reduce((acc, r) => acc + r.calculatedArea, 0).toFixed(2)} m²</span></p>
                 <p>Valor por m²: <span className="font-bold">{formatCurrency(budget.sqMetersPrice || 0)}</span></p>
                 <p>Demãos: <span className="font-bold">{budget.paintCoats || 1}</span></p>
               </div>
