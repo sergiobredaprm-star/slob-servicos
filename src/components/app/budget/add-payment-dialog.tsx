@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { cn, parseDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Loader2, QrCode, Coins, CreditCard, Wallet } from 'lucide-react';
@@ -86,7 +86,7 @@ export function AddPaymentDialog({
     if (paymentToEdit && isOpen) {
       form.reset({
         amount: paymentToEdit.amount,
-        date: paymentToEdit.date instanceof Date ? paymentToEdit.date : new Date(),
+        date: parseDate(paymentToEdit.date) || new Date(),
         method: paymentToEdit.method || 'pix',
         notes: paymentToEdit.notes || '',
       });

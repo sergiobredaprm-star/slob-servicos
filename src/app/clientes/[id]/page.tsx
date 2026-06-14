@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
+import { parseDate } from '@/lib/utils';
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -27,12 +28,8 @@ const formatCurrency = (value: number) => {
 };
 
 const formatDate = (date: any) => {
-    if (!date) return 'N/A';
-    const d = date instanceof Date 
-      ? date 
-      : (date as any).toDate 
-        ? (date as any).toDate() 
-        : new Date(date);
+    const d = parseDate(date);
+    if (!d) return 'N/A';
     return format(d, 'dd/MM/yyyy', { locale: ptBR });
 };
 

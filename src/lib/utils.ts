@@ -21,3 +21,19 @@ export function formatCpf(value: string) {
   value = value.replace(/(\d{3})(\d{1,2})$/,"$1-$2")
   return value
 }
+
+export function parseDate(dateValue: any): Date | null {
+  if (!dateValue) return null;
+  if (dateValue instanceof Date) return dateValue;
+  if (typeof dateValue === 'object') {
+    if (typeof dateValue.toDate === 'function') {
+      return dateValue.toDate();
+    }
+    if (dateValue.seconds !== undefined) {
+      return new Date(dateValue.seconds * 1000);
+    }
+  }
+  const dateObj = new Date(dateValue);
+  return isNaN(dateObj.getTime()) ? null : dateObj;
+}
+

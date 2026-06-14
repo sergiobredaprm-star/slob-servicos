@@ -12,6 +12,7 @@ import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { Budget } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { useParams } from 'next/navigation';
+import { parseDate } from '@/lib/utils';
 
 export default function EditBudgetPage() {
   const params = useParams();
@@ -38,28 +39,12 @@ export default function EditBudgetPage() {
 
   const budgetWithDates = {
     ...budget,
-    registrationDate: budget.registrationDate instanceof Date 
-      ? budget.registrationDate 
-      : (budget.registrationDate as any)?.toDate 
-        ? (budget.registrationDate as any).toDate() 
-        : budget.registrationDate ? new Date(budget.registrationDate as any) : undefined,
+    registrationDate: parseDate(budget.registrationDate) || undefined,
     period: {
-      from: budget.period?.from instanceof Date 
-        ? budget.period.from 
-        : (budget.period?.from as any)?.toDate 
-          ? (budget.period?.from as any).toDate() 
-          : budget.period?.from ? new Date(budget.period.from as any) : undefined,
-      to: budget.period?.to instanceof Date 
-        ? budget.period.to 
-        : (budget.period?.to as any)?.toDate 
-          ? (budget.period?.to as any).toDate() 
-          : budget.period?.to ? new Date(budget.period.to as any) : undefined,
+      from: parseDate(budget.period?.from) || undefined,
+      to: parseDate(budget.period?.to) || undefined,
     },
-    deadline: budget.deadline instanceof Date 
-      ? budget.deadline 
-      : (budget.deadline as any)?.toDate 
-        ? (budget.deadline as any).toDate() 
-        : budget.deadline ? new Date(budget.deadline as any) : undefined,
+    deadline: parseDate(budget.deadline) || undefined,
   }
 
   return (

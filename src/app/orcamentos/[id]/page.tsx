@@ -11,6 +11,7 @@ import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { Budget, BudgetStatus, Payment, CompanyProfile, Client, PaintingRoom } from '@/lib/types';
 import { doc, Timestamp } from 'firebase/firestore';
 import { useParams, useRouter } from 'next/navigation';
+import { parseDate } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -85,12 +86,8 @@ const formatCurrency = (value: number) => {
 };
 
 const formatDate = (date: any) => {
-  if (!date) return 'N/A';
-  const d = date instanceof Date 
-    ? date 
-    : (date as any).toDate 
-      ? (date as any).toDate() 
-      : new Date(date);
+  const d = parseDate(date);
+  if (!d) return 'N/A';
   return format(d, 'dd/MM/yyyy', { locale: ptBR });
 };
 
@@ -197,7 +194,7 @@ export default function BudgetDetailsPage() {
   const handleEditPayment = (payment: Payment) => {
     const paymentWithDate = {
       ...payment,
-      date: (payment.date as Timestamp).toDate(),
+      date: parseDate(payment.date)!,
     };
     setSelectedPayment(paymentWithDate);
     setIsPaymentDialogOpen(true);
@@ -272,12 +269,11 @@ export default function BudgetDetailsPage() {
     message += '---------------------------------\n\n';
 
     if (budget.budgetType === 'daily') {
+      const dateFrom = parseDate(budget.period?.from);
+      const dateTo = parseDate(budget.period?.to);
       const workDays =
-        budget.period?.from && budget.period?.to
-          ? differenceInCalendarDays(
-              (budget.period.to as any).toDate(),
-              (budget.period.from as any).toDate()
-            ) + 1
+        dateFrom && dateTo
+          ? differenceInCalendarDays(dateTo, dateFrom) + 1
           : 0;
       message += `*Tipo:* Por Diária\n`;
       message += `*Período:* ${formatDate(budget.period?.from)} a ${formatDate(

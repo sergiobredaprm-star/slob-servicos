@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { parseDate } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { firestore, user } = useFirebase();
@@ -47,12 +48,8 @@ export default function DashboardPage() {
     if (!allBudgets) return [];
     const yearsSet = new Set<number>();
     allBudgets.forEach((budget) => {
-      if (budget.registrationDate) {
-        const date = budget.registrationDate instanceof Date
-          ? budget.registrationDate
-          : (budget.registrationDate as any).toDate
-            ? (budget.registrationDate as any).toDate()
-            : new Date(budget.registrationDate as any);
+      const date = parseDate(budget.registrationDate);
+      if (date) {
         yearsSet.add(date.getFullYear());
       }
     });
@@ -63,13 +60,8 @@ export default function DashboardPage() {
     if (!allBudgets) return null;
     if (selectedYear === 'all') return allBudgets;
     return allBudgets.filter((budget) => {
-      if (!budget.registrationDate) return false;
-      const date = budget.registrationDate instanceof Date
-        ? budget.registrationDate
-        : (budget.registrationDate as any).toDate
-          ? (budget.registrationDate as any).toDate()
-          : new Date(budget.registrationDate as any);
-      return date.getFullYear().toString() === selectedYear;
+      const date = parseDate(budget.registrationDate);
+      return date ? date.getFullYear().toString() === selectedYear : false;
     });
   }, [allBudgets, selectedYear]);
 

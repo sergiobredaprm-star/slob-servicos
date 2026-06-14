@@ -11,6 +11,7 @@ import { Budget } from '@/lib/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useMemo } from 'react';
+import { parseDate } from '@/lib/utils';
 
 const chartConfig = {
   profit: {
@@ -42,17 +43,11 @@ export function Overview({ budgets, year }: OverviewProps) {
     const yearToFilter = year && year !== 'all' ? parseInt(year, 10) : new Date().getFullYear();
 
     for (const budget of budgets) {
-      if (budget.registrationDate) {
-        const registrationDate = budget.registrationDate instanceof Date 
-          ? budget.registrationDate 
-          : (budget.registrationDate as any).toDate 
-            ? (budget.registrationDate as any).toDate() 
-            : new Date(budget.registrationDate as any);
-        if (registrationDate.getFullYear() === yearToFilter) {
-            const month = registrationDate.getMonth();
-            monthlyTotals[month].profit += budget.profit || 0;
-            monthlyTotals[month].material += budget.materialCost || 0;
-        }
+      const date = parseDate(budget.registrationDate);
+      if (date && date.getFullYear() === yearToFilter) {
+        const month = date.getMonth();
+        monthlyTotals[month].profit += budget.profit || 0;
+        monthlyTotals[month].material += budget.materialCost || 0;
       }
     }
 

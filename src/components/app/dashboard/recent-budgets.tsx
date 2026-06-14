@@ -1,6 +1,7 @@
 'use client';
 import { Budget } from '@/lib/types';
 import { useMemo } from 'react';
+import { parseDate } from '@/lib/utils';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -19,17 +20,12 @@ export function RecentBudgets({ budgets }: RecentBudgetsProps) {
     return [...budgets]
       .filter(b => b.registrationDate) // Garante que o orçamento tenha data de registro
       .sort((a, b) => {
-        const dateA = a.registrationDate instanceof Date 
-          ? a.registrationDate 
-          : (a.registrationDate as any).toDate 
-            ? (a.registrationDate as any).toDate() 
-            : new Date(a.registrationDate as any);
-        const dateB = b.registrationDate instanceof Date 
-          ? b.registrationDate 
-          : (b.registrationDate as any).toDate 
-            ? (b.registrationDate as any).toDate() 
-            : new Date(b.registrationDate as any);
-        return dateB.getTime() - dateA.getTime();
+        const dateA = parseDate(a.registrationDate);
+        const dateB = parseDate(b.registrationDate);
+        if (dateA && dateB) {
+          return dateB.getTime() - dateA.getTime();
+        }
+        return 0;
       })
       .slice(0, 5);
   }, [budgets]);
