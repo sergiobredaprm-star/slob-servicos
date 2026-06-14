@@ -45,9 +45,7 @@ export default function RootLayout({
         <Suspense fallback={<div>Carregando...</div>}>
           <FirebaseClientProvider>
             <ThemeProvider
-              attribute="class"
               defaultTheme="system"
-              enableSystem
               storageKey="orcadia-theme"
             >
               <AppContent>{children}</AppContent>

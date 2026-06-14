@@ -43,3 +43,20 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+# firebase app hosting ignores
+.firebase/
+.backup_*/
+jarvis/
+gravacoes/
+.agent/
+.agents/
+scratch/
+
+.vercel
+
+# local configurations
+studio.json
+Iniciar_*.bat
+monitor_camera.py
+Extract.ps1
+help.txt

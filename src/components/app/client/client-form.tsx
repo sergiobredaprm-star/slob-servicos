@@ -20,7 +20,7 @@ import { Client } from '@/lib/types';
 import { useFirebase, useUser } from '@/firebase';
 import { saveClient } from '@/lib/firebase/client-services';
 import { Loader2 } from 'lucide-react';
-import { formatPhoneNumber } from '@/lib/utils';
+import { formatPhoneNumber, formatCpf } from '@/lib/utils';
 
 const phoneRegex = new RegExp(
   /^\(\d{2}\)\s\d{4,5}-\d{4}$/
@@ -30,6 +30,7 @@ const formSchema = z.object({
   name: z.string().min(2, {
     message: 'O nome do cliente deve ter pelo menos 2 caracteres.',
   }),
+  cpf: z.string().optional().or(z.literal('')),
   contactEmail: z.string().email({ message: 'Por favor, insira um e-mail válido.' }).optional().or(z.literal('')),
   contactPhone: z.string().regex(phoneRegex, 'Número de telefone inválido. Use (xx) xxxxx-xxxx.').optional().or(z.literal('')),
   notes: z.string().optional(),
@@ -52,6 +53,7 @@ export function ClientForm({ initialData, clientId }: ClientFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: initialData || {
       name: '',
+      cpf: '',
       contactEmail: '',
       contactPhone: '',
       notes: '',
@@ -97,6 +99,11 @@ export function ClientForm({ initialData, clientId }: ClientFormProps) {
     form.setValue('contactPhone', formattedNumber);
   };
 
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedCpf = formatCpf(e.target.value);
+    form.setValue('cpf', formattedCpf);
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -108,6 +115,24 @@ export function ClientForm({ initialData, clientId }: ClientFormProps) {
               <FormLabel>Nome do Cliente</FormLabel>
               <FormControl>
                 <Input placeholder="Nome completo ou da empresa" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="cpf"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>CPF (Opcional)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="000.000.000-00"
+                  {...field}
+                  onChange={handleCpfChange}
+                  maxLength={14}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

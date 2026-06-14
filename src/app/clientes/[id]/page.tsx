@@ -28,7 +28,11 @@ const formatCurrency = (value: number) => {
 
 const formatDate = (date: any) => {
     if (!date) return 'N/A';
-    const d = (date as any).toDate ? (date as any).toDate() : new Date(date);
+    const d = date instanceof Date 
+      ? date 
+      : (date as any).toDate 
+        ? (date as any).toDate() 
+        : new Date(date);
     return format(d, 'dd/MM/yyyy', { locale: ptBR });
 };
 

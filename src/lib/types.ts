@@ -6,10 +6,13 @@ export type BudgetStatus = 'prospecção' | 'ativo' | 'concluído' | 'cancelado'
 export type BudgetType = 'daily' | 'task';
 export type ServiceType = 'Pintura' | 'Elétrica' | 'Hidráulica' | 'Alvenaria' | 'Outro' | string;
 
+export type PaymentMethod = 'pix' | 'dinheiro' | 'cartão' | 'outro';
+
 export type Payment = {
   id: string;
   amount: number;
   date: Date | Timestamp;
+  method: PaymentMethod;
   notes?: string;
 };
 
@@ -95,6 +98,9 @@ export type Budget = {
   paintCoats?: number;
   electricalItems?: ElectricalItem[];
   hydraulicItems?: HydraulicItem[];
+  serviceItems?: ElectricalItem[]; // Generic items for other services
+  materialItems?: ElectricalItem[]; // List of materials
+  includeMaterialList?: boolean;
   issueInvoice?: boolean;
   invoiceTaxRate?: number;
 };
@@ -109,6 +115,7 @@ export type DailyRateSettings = {
 export type Client = {
   id: string;
   name: string;
+  cpf?: string;
   contactEmail?: string;
   contactPhone?: string;
   notes?: string;

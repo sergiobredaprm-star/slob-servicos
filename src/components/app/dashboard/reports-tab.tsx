@@ -161,6 +161,9 @@ export function ReportsTab() {
     });
   }, [reportData, filterClientId, filterStatus]);
 
+  const totalProspeccao = filteredData
+      .filter((b) => b.status === 'prospecção')
+      .reduce((sum, b) => sum + b.total, 0);
   const totalAtivo = filteredData
       .filter((b) => b.status === 'ativo')
       .reduce((sum, b) => sum + b.total, 0);
@@ -170,7 +173,10 @@ export function ReportsTab() {
   const totalCancelado = filteredData
       .filter((b) => b.status === 'cancelado')
       .reduce((sum, b) => sum + b.total, 0);
-  const grandTotal = totalAtivo + totalConcluido;
+  
+  const totalProfit = filteredData.reduce((sum, b) => sum + (b.profit || 0), 0);
+  const totalMaterial = filteredData.reduce((sum, b) => sum + (b.materialCost || 0), 0);
+  const grandTotal = filteredData.reduce((sum, b) => sum + b.total, 0);
 
   const handleExportPDF = () => {
     if (filteredData.length === 0 || !date?.from || !date.to) return;
@@ -193,9 +199,13 @@ export function ReportsTab() {
     startY += 10;
 
     const summaryData = [
-        ['Total Geral', formatCurrency(grandTotal)],
+        ['Receita Bruta', formatCurrency(grandTotal)],
+        ['Ganho Real (Mão de Obra)', formatCurrency(totalProfit)],
+        ['Custo com Material', formatCurrency(totalMaterial)],
+        ['---', '---'],
         ['Concluído', formatCurrency(totalConcluido)],
         ['Ativo', formatCurrency(totalAtivo)],
+        ['Prospecção', formatCurrency(totalProspeccao)],
         ['Cancelado', formatCurrency(totalCancelado)],
     ];
     
@@ -209,12 +219,14 @@ export function ReportsTab() {
     
     startY = (doc as any).lastAutoTable.finalY + 10;
 
-    const tableColumn = ['Cliente', 'Tarefa', 'Status', 'Total'];
+    const tableColumn = ['Cliente', 'Tarefa', 'Status', 'Rec. Bruta', 'G. Real', 'Material'];
     const tableRows = filteredData.map((budget) => [
       budget.clientName,
       budget.task,
       budget.status,
       formatCurrency(budget.total),
+      formatCurrency(budget.profit || 0),
+      formatCurrency(budget.materialCost || 0),
     ]);
 
     autoTable(doc, {
@@ -245,10 +257,15 @@ export function ReportsTab() {
     }
     message += '\n';
 
-    message += `*Resumo do Relatório*\n`;
-    message += `*Total Geral:* ${formatCurrency(grandTotal)}\n`;
+    message += `*Resumo Financeiro*\n`;
+    message += `*Receita Bruta:* ${formatCurrency(grandTotal)}\n`;
+    message += `*Ganho Real (Mão de Obra):* ${formatCurrency(totalProfit)}\n`;
+    message += `*Custo com Material:* ${formatCurrency(totalMaterial)}\n\n`;
+    
+    message += `*Por Status*\n`;
     message += `*Concluído:* ${formatCurrency(totalConcluido)}\n`;
     message += `*Ativo:* ${formatCurrency(totalAtivo)}\n`;
+    message += `*Prospecção:* ${formatCurrency(totalProspeccao)}\n`;
     message += `*Cancelado:* ${formatCurrency(totalCancelado)}\n`;
     
     const displayData = statusFilter ? filteredData.filter(b => b.status === statusFilter) : filteredData;
@@ -394,53 +411,101 @@ export function ReportsTab() {
                </DropdownMenu>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Total Geral
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency(grandTotal)}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Concluído
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency(totalConcluido)}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Ativo</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency(totalAtivo)}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Cancelado
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency(totalCancelado)}
-                  </p>
-                </CardContent>
-              </Card>
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">Resumo Financeiro</h4>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Receita Bruta
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">
+                      {formatCurrency(grandTotal)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Total cobrado (Mão de Obra + Material)</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-green-500/20 bg-green-500/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-green-600 dark:text-green-400">
+                      Ganho Real (Mão de Obra)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(totalProfit)}
+                    </p>
+                    <p className="text-xs text-muted-foreground text-green-600/80 dark:text-green-400/80">Seu lucro líquido estimado</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-orange-500/20 bg-orange-500/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-orange-600 dark:text-orange-400">
+                      Custo com Material
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                      {formatCurrency(totalMaterial)}
+                    </p>
+                    <p className="text-xs text-muted-foreground text-orange-600/80 dark:text-orange-400/80">Investimento em materiais</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">Resumo por Status</h4>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Concluído
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">
+                      {formatCurrency(totalConcluido)}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Ativo</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">
+                      {formatCurrency(totalAtivo)}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Prospecção
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">
+                      {formatCurrency(totalProspeccao)}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Cancelado
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">
+                      {formatCurrency(totalCancelado)}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
 
             <Table>
@@ -449,7 +514,9 @@ export function ReportsTab() {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Tarefa</TableHead>
                   <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Rec. Bruta</TableHead>
+                  <TableHead className="text-right text-green-600 dark:text-green-400">G. Real</TableHead>
+                  <TableHead className="text-right text-orange-600 dark:text-orange-400">Material</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -471,11 +538,17 @@ export function ReportsTab() {
                       <TableCell className="text-right">
                         {formatCurrency(budget.total)}
                       </TableCell>
+                      <TableCell className="text-right text-green-600 dark:text-green-400">
+                        {formatCurrency(budget.profit || 0)}
+                      </TableCell>
+                      <TableCell className="text-right text-orange-600 dark:text-orange-400">
+                        {formatCurrency(budget.materialCost || 0)}
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Nenhum orçamento encontrado com os filtros aplicados.
                     </TableCell>
                   </TableRow>

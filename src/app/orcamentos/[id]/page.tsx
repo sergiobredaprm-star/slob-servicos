@@ -23,6 +23,10 @@ import {
   Edit,
   Share2,
   Copy,
+  QrCode,
+  Coins,
+  CreditCard,
+  Wallet,
 } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
 import {
@@ -82,7 +86,11 @@ const formatCurrency = (value: number) => {
 
 const formatDate = (date: any) => {
   if (!date) return 'N/A';
-  const d = (date as any).toDate ? (date as any).toDate() : new Date(date);
+  const d = date instanceof Date 
+    ? date 
+    : (date as any).toDate 
+      ? (date as any).toDate() 
+      : new Date(date);
   return format(d, 'dd/MM/yyyy', { locale: ptBR });
 };
 
@@ -102,6 +110,19 @@ const WhatsappIcon = (props: React.SVGProps<SVGSVGElement>) => (
       <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
     </svg>
 );
+
+const getPaymentMethodIcon = (method?: string) => {
+  switch (method) {
+    case 'pix':
+      return <QrCode className="h-4 w-4 text-primary" />;
+    case 'dinheiro':
+      return <Coins className="h-4 w-4 text-emerald-500" />;
+    case 'cartão':
+      return <CreditCard className="h-4 w-4 text-blue-500" />;
+    default:
+      return <Wallet className="h-4 w-4 text-orange-500" />;
+  }
+};
 
 
 export default function BudgetDetailsPage() {
@@ -592,7 +613,8 @@ export default function BudgetDetailsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Data</TableHead>
+                         <TableHead>Data</TableHead>
+                        <TableHead>Método</TableHead>
                         <TableHead>Valor</TableHead>
                         <TableHead>Observações</TableHead>
                         <TableHead>
@@ -605,8 +627,14 @@ export default function BudgetDetailsPage() {
                         budget.paymentHistory.map((p) => (
                           <TableRow key={p.id}>
                             <TableCell>{formatDate(p.date)}</TableCell>
-                            <TableCell>{formatCurrency(p.amount)}</TableCell>
-                            <TableCell>{p.notes || '-'}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {getPaymentMethodIcon(p.method)}
+                                <span className="capitalize text-xs">{p.method || 'outro'}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">{formatCurrency(p.amount)}</TableCell>
+                            <TableCell className="text-muted-foreground">{p.notes || '-'}</TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

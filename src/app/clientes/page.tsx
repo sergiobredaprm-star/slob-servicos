@@ -57,11 +57,13 @@ export default function ClientesPage() {
 
   const { data: clients, isLoading } = useCollection<Client>(clientsQuery);
   
-  const filteredClients = useMemo(() => {
+  const sortedClients = useMemo(() => {
     if (!clients) return [];
-    return clients.filter(client => 
-      client.name.toLowerCase().includes(filter.toLowerCase())
-    );
+    return clients
+      .filter(client => 
+        client.name.toLowerCase().includes(filter.toLowerCase())
+      )
+      .sort((a, b) => a.name.trim().localeCompare(b.name.trim()));
   }, [clients, filter]);
 
   const handleDeleteClick = (clientId: string) => {
@@ -132,7 +134,7 @@ export default function ClientesPage() {
             </TableHeader>
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={4} className="text-center">Carregando...</TableCell></TableRow>}
-              {!isLoading && filteredClients && filteredClients.map((client) => (
+              {!isLoading && sortedClients && sortedClients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">
                     {client.name}
@@ -168,7 +170,7 @@ export default function ClientesPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && (!filteredClients || filteredClients.length === 0) && <TableRow><TableCell colSpan={4} className="text-center">Nenhum cliente encontrado.</TableCell></TableRow>}
+              {!isLoading && (!sortedClients || sortedClients.length === 0) && <TableRow><TableCell colSpan={4} className="text-center">Nenhum cliente encontrado.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

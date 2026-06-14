@@ -19,12 +19,16 @@ export function RecentBudgets({ budgets }: RecentBudgetsProps) {
     return [...budgets]
       .filter(b => b.registrationDate) // Garante que o orçamento tenha data de registro
       .sort((a, b) => {
-        const dateA = (a.registrationDate as any).toDate
-          ? (a.registrationDate as any).toDate()
-          : new Date(a.registrationDate);
-        const dateB = (b.registrationDate as any).toDate
-          ? (b.registrationDate as any).toDate()
-          : new Date(b.registrationDate);
+        const dateA = a.registrationDate instanceof Date 
+          ? a.registrationDate 
+          : (a.registrationDate as any).toDate 
+            ? (a.registrationDate as any).toDate() 
+            : new Date(a.registrationDate as any);
+        const dateB = b.registrationDate instanceof Date 
+          ? b.registrationDate 
+          : (b.registrationDate as any).toDate 
+            ? (b.registrationDate as any).toDate() 
+            : new Date(b.registrationDate as any);
         return dateB.getTime() - dateA.getTime();
       })
       .slice(0, 5);

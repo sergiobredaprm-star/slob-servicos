@@ -38,12 +38,28 @@ export default function EditBudgetPage() {
 
   const budgetWithDates = {
     ...budget,
-    registrationDate: budget.registrationDate ? (budget.registrationDate as any).toDate() : undefined,
+    registrationDate: budget.registrationDate instanceof Date 
+      ? budget.registrationDate 
+      : (budget.registrationDate as any)?.toDate 
+        ? (budget.registrationDate as any).toDate() 
+        : budget.registrationDate ? new Date(budget.registrationDate as any) : undefined,
     period: {
-      from: budget.period?.from ? (budget.period.from as any).toDate() : undefined,
-      to: budget.period?.to ? (budget.period.to as any).toDate() : undefined,
+      from: budget.period?.from instanceof Date 
+        ? budget.period.from 
+        : (budget.period?.from as any)?.toDate 
+          ? (budget.period?.from as any).toDate() 
+          : budget.period?.from ? new Date(budget.period.from as any) : undefined,
+      to: budget.period?.to instanceof Date 
+        ? budget.period.to 
+        : (budget.period?.to as any)?.toDate 
+          ? (budget.period?.to as any).toDate() 
+          : budget.period?.to ? new Date(budget.period.to as any) : undefined,
     },
-    deadline: budget.deadline ? (budget.deadline as any).toDate() : undefined,
+    deadline: budget.deadline instanceof Date 
+      ? budget.deadline 
+      : (budget.deadline as any)?.toDate 
+        ? (budget.deadline as any).toDate() 
+        : budget.deadline ? new Date(budget.deadline as any) : undefined,
   }
 
   return (

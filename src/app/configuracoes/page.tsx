@@ -347,7 +347,7 @@ export default function SettingsPage() {
       try {
         let photoURL = auth.currentUser?.photoURL || '';
         
-        if (values.photoFile) {
+        if (values.photoFile && auth.currentUser) {
           photoURL = await uploadProfileImage(firebaseApp, auth.currentUser.uid, values.photoFile);
           setGalleryImages(prev => [photoURL, ...prev]);
         }

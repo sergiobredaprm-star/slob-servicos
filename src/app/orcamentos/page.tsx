@@ -114,7 +114,7 @@ function OrcamentosPageComponent() {
 
   const sortedClients = useMemo(() => {
     if (!clients) return [];
-    return [...clients].sort((a, b) => a.name.localeCompare(b.name));
+    return [...clients].sort((a, b) => a.name.trim().localeCompare(b.name.trim()));
   }, [clients]);
 
   const filteredBudgets = useMemo(() => {

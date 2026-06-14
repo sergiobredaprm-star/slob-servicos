@@ -40,8 +40,8 @@ export async function getCompanyProfile(
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      return { id: doc.id, ...(doc.data() as CompanyProfile) };
+      const data = querySnapshot.docs[0].data() as CompanyProfile;
+      return { ...data, id: querySnapshot.docs[0].id };
     }
     return null;
   } catch (error: any) {

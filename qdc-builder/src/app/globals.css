@@ -1,0 +1,112 @@
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* Realistic Galvanized DIN Rail */
+.din-rail {
+  background: linear-gradient(180deg, #94a3b8 0%, #cbd5e1 15%, #f1f5f9 50%, #cbd5e1 85%, #64748b 100%);
+  border-top: 1px solid #94a3b8;
+  border-bottom: 2px solid #475569;
+  height: 35px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  position: relative;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), inset 0 2px 4px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Yellow Corrugated Pipe - Professional Gloss */
+.corrugated-pipe {
+  background: #fbbf24;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 10px,
+    rgba(0,0,0,0.1) 10px,
+    rgba(0,0,0,0.1) 14px
+  );
+  border-radius: 6px;
+  box-shadow: inset -5px 0 15px rgba(0,0,0,0.2), 4px 0 10px rgba(0,0,0,0.1);
+  width: 42px;
+  height: 100px;
+}
+
+/* Industrial QDC Box - Rugged Plastic Look */
+.qdc-box-shell {
+  background: #d1d5db;
+  border: 1px solid #9ca3af;
+  border-radius: 40px;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    inset 0 0 60px rgba(255,255,255,0.4);
+  position: relative;
+  overflow: visible;
+}
+
+.qdc-inner-shadow {
+  position: absolute;
+  inset: 20px;
+  border-radius: 20px;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+  pointer-events: none;
+}
+
+/* Professional Busbars */
+.busbar-neutral {
+  background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+  border-radius: 4px;
+  padding: 8px 4px;
+  box-shadow: 2px 4px 8px rgba(0,0,0,0.2);
+}
+
+.busbar-ground {
+  background: linear-gradient(90deg, #15803d, #22c55e);
+  border-radius: 4px;
+  padding: 8px 4px;
+  box-shadow: 2px 4px 8px rgba(0,0,0,0.2);
+}
+
+.busbar-screw {
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle at 30% 30%, #fbbf24, #b45309);
+  border-radius: 50%;
+  box-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.device-on-rail {
+  filter: drop-shadow(0 15px 25px rgba(0,0,0,0.4));
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.device-on-rail:hover {
+  transform: translateY(-8px) scale(1.05);
+  z-index: 50;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}

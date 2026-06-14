@@ -42,7 +42,7 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between space-y-2">
         <h1 className="text-3xl font-bold tracking-tight font-headline">
-          Painel
+          Painel de orçamentos
         </h1>
         <div className="flex items-center space-x-2">
           <Button asChild>
@@ -77,9 +77,8 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Orçamentos Recentes</CardTitle>
                 <CardDescription>
-                    {`Você tem ${
-                        filteredBudgets?.length || 0
-                      } orçamentos registrados no total.`}
+                  {`Você tem ${filteredBudgets?.length || 0
+                    } orçamentos registrados no total.`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -90,7 +89,7 @@ export default function DashboardPage() {
         </TabsContent>
         <TabsContent value="analytics" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <StatusDistributionChart budgets={filteredBudgets} />
+            <StatusDistributionChart budgets={filteredBudgets} />
           </div>
         </TabsContent>
         <TabsContent value="reports" className="space-y-4">

@@ -13,9 +13,13 @@ import { ptBR } from 'date-fns/locale';
 import { useMemo } from 'react';
 
 const chartConfig = {
-  total: {
-    label: 'Total',
-    color: 'hsl(var(--chart-1))',
+  profit: {
+    label: 'Ganho Real',
+    color: 'hsl(var(--chart-2))',
+  },
+  material: {
+    label: 'Material',
+    color: 'hsl(var(--chart-4))',
   },
 } satisfies ChartConfig;
 
@@ -30,17 +34,23 @@ export function Overview({ budgets }: OverviewProps) {
 
     const monthlyTotals = Array.from({ length: 12 }, (_, i) => ({
       name: format(new Date(0, i), 'MMM', { locale: ptBR }),
-      total: 0,
+      profit: 0,
+      material: 0,
     }));
     
     const currentYear = new Date().getFullYear();
 
     for (const budget of budgets) {
       if (budget.registrationDate) {
-        const registrationDate = (budget.registrationDate as any).toDate ? (budget.registrationDate as any).toDate() : new Date(budget.registrationDate);
+        const registrationDate = budget.registrationDate instanceof Date 
+          ? budget.registrationDate 
+          : (budget.registrationDate as any).toDate 
+            ? (budget.registrationDate as any).toDate() 
+            : new Date(budget.registrationDate as any);
         if (registrationDate.getFullYear() === currentYear) {
             const month = registrationDate.getMonth();
-            monthlyTotals[month].total += budget.total;
+            monthlyTotals[month].profit += budget.profit || 0;
+            monthlyTotals[month].material += budget.materialCost || 0;
         }
       }
     }
@@ -72,9 +82,16 @@ export function Overview({ budgets }: OverviewProps) {
             content={<ChartTooltipContent indicator="dot" />}
           />
           <Bar
-            dataKey="total"
-            fill="var(--color-total)"
+            dataKey="profit"
+            fill="var(--color-profit)"
+            radius={[0, 0, 0, 0]}
+            stackId="a"
+          />
+          <Bar
+            dataKey="material"
+            fill="var(--color-material)"
             radius={[4, 4, 0, 0]}
+            stackId="a"
           />
         </BarChart>
       </ResponsiveContainer>

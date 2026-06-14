@@ -27,7 +27,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { CalendarIcon, Loader2, QrCode, Coins, CreditCard, Wallet } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { addPaymentToBudget, updatePaymentInBudget } from '@/lib/firebase/services';
@@ -38,6 +39,9 @@ const paymentSchema = z.object({
     .number()
     .positive({ message: 'O valor deve ser maior que zero.' }),
   date: z.date({ required_error: 'A data do pagamento é obrigatória.' }),
+  method: z.enum(['pix', 'dinheiro', 'cartão', 'outro'], {
+    required_error: 'Selecione o método de pagamento.',
+  }),
   notes: z.string().optional(),
 });
 
@@ -73,6 +77,7 @@ export function AddPaymentDialog({
     defaultValues: {
       amount: '' as any,
       date: new Date(),
+      method: 'pix',
       notes: '',
     },
   });
@@ -82,12 +87,14 @@ export function AddPaymentDialog({
       form.reset({
         amount: paymentToEdit.amount,
         date: paymentToEdit.date instanceof Date ? paymentToEdit.date : new Date(),
+        method: paymentToEdit.method || 'pix',
         notes: paymentToEdit.notes || '',
       });
     } else if (!isOpen) {
        form.reset({
         amount: '' as any,
         date: new Date(),
+        method: 'pix',
         notes: '',
       });
     }
@@ -142,6 +149,76 @@ export function AddPaymentDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="method"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Método de Pagamento</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="grid grid-cols-2 sm:grid-cols-4 gap-2"
+                    >
+                      <FormItem>
+                        <FormControl>
+                          <RadioGroupItem value="pix" className="sr-only" />
+                        </FormControl>
+                        <FormLabel className={cn(
+                          "flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all duration-200",
+                          field.value === 'pix' && "border-primary bg-primary/5 shadow-md shadow-primary/10"
+                        )}>
+                          <QrCode className={cn("mb-2 h-5 w-5", field.value === 'pix' ? "text-primary" : "text-muted-foreground")} />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">PIX</span>
+                        </FormLabel>
+                      </FormItem>
+
+                      <FormItem>
+                        <FormControl>
+                          <RadioGroupItem value="dinheiro" className="sr-only" />
+                        </FormControl>
+                        <FormLabel className={cn(
+                          "flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all duration-200",
+                          field.value === 'dinheiro' && "border-emerald-500 bg-emerald-500/5 shadow-md shadow-emerald-500/10"
+                        )}>
+                          <Coins className={cn("mb-2 h-5 w-5", field.value === 'dinheiro' ? "text-emerald-500" : "text-muted-foreground")} />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-center">Dinheiro</span>
+                        </FormLabel>
+                      </FormItem>
+
+                      <FormItem>
+                        <FormControl>
+                          <RadioGroupItem value="cartão" className="sr-only" />
+                        </FormControl>
+                        <FormLabel className={cn(
+                          "flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all duration-200",
+                          field.value === 'cartão' && "border-blue-500 bg-blue-500/5 shadow-md shadow-blue-500/10"
+                        )}>
+                          <CreditCard className={cn("mb-2 h-5 w-5", field.value === 'cartão' ? "text-blue-500" : "text-muted-foreground")} />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Cartão</span>
+                        </FormLabel>
+                      </FormItem>
+
+                      <FormItem>
+                        <FormControl>
+                          <RadioGroupItem value="outro" className="sr-only" />
+                        </FormControl>
+                        <FormLabel className={cn(
+                          "flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all duration-200",
+                          field.value === 'outro' && "border-orange-500 bg-orange-500/5 shadow-md shadow-orange-500/10"
+                        )}>
+                          <Wallet className={cn("mb-2 h-5 w-5", field.value === 'outro' ? "text-orange-500" : "text-muted-foreground")} />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Outro</span>
+                        </FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="amount"

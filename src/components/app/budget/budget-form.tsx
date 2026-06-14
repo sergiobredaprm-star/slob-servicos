@@ -36,7 +36,7 @@ import {
   CardDescription
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Sparkles, Loader2, Check, ChevronsUpDown, Trash2, PlusCircle, Search } from 'lucide-react';
+import { CalendarIcon, Sparkles, Loader2, Check, ChevronsUpDown, Trash2, PlusCircle, Search, Package } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
@@ -94,6 +94,20 @@ const baseFormSchema = z.object({
   deadline: z.date().optional(),
   task: z.string().min(5, { message: 'A descrição da tarefa deve ter pelo menos 5 caracteres.' }),
   materialCost: z.coerce.number().optional(),
+  profit: z.coerce.number().optional(),
+  sqMetersPrice: z.coerce.number().optional(),
+  paintCoats: z.coerce.number().optional(),
+  paintingRooms: z.array(paintingRoomSchema).optional(),
+  electricalItems: z.array(electricalItemSchema).optional(),
+  hydraulicItems: z.array(hydraulicItemSchema).optional(),
+  serviceItems: z.array(electricalItemSchema).optional(),
+  materialItems: z.array(electricalItemSchema).optional(),
+  includeMaterialList: z.boolean().optional(),
+  period: z.object({
+    from: z.date().optional(),
+    to: z.date().optional(),
+  }).optional(),
+  dailyRate: z.coerce.number().optional(),
   status: z.enum(['prospecção', 'ativo', 'concluído', 'cancelado']),
   issueInvoice: z.boolean().optional(),
   invoiceTaxRate: z.coerce.number().optional(),
@@ -101,21 +115,10 @@ const baseFormSchema = z.object({
 
 const dailyBudgetSchema = baseFormSchema.extend({
   budgetType: z.literal('daily'),
-  period: z.object({
-    from: z.date({ required_error: 'A data inicial é obrigatória.' }),
-    to: z.date({ required_error: 'A data final é obrigatória.' }),
-  }),
-  dailyRate: z.coerce.number().positive('O valor da diária deve ser maior que zero.'),
 });
 
 const taskBudgetSchema = baseFormSchema.extend({
   budgetType: z.literal('task'),
-  profit: z.coerce.number().optional(),
-  sqMetersPrice: z.coerce.number().optional(),
-  paintCoats: z.coerce.number().optional(),
-  paintingRooms: z.array(paintingRoomSchema).optional(),
-  electricalItems: z.array(electricalItemSchema).optional(),
-  hydraulicItems: z.array(hydraulicItemSchema).optional(),
 });
 
 const formSchema = z.discriminatedUnion('budgetType', [
@@ -251,7 +254,7 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
 
   const sortedClients = useMemo(() => {
     if (!clients) return [];
-    return [...clients].sort((a, b) => a.name.localeCompare(b.name));
+    return [...clients].sort((a, b) => a.name.trim().localeCompare(b.name.trim()));
   }, [clients]);
 
   const sortedElectricalServiceItems = useMemo(() => {
@@ -304,6 +307,9 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
       paintingRooms: [{ name: '', type: 'completo', calculatedArea: 0, deductionsArea: 0 }],
       electricalItems: [{ name: '', quantity: 1, value: 0 }],
       hydraulicItems: [{ name: '', quantity: 1, value: 0 }],
+      serviceItems: [{ name: '', quantity: 1, value: 0 }],
+      materialItems: [{ name: '', quantity: 1, value: 0 }],
+      includeMaterialList: false,
       issueInvoice: false,
       invoiceTaxRate: 0,
     },
@@ -324,6 +330,16 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
     name: 'paintingRooms',
   });
 
+  const { fields: serviceItemFields, append: serviceItemAppend, remove: serviceItemRemove, update: serviceItemUpdate } = useFieldArray({
+    control: form.control,
+    name: 'serviceItems',
+  });
+
+  const { fields: materialItemFields, append: materialAppend, remove: materialRemove, update: materialUpdate } = useFieldArray({
+    control: form.control,
+    name: 'materialItems',
+  });
+
    useEffect(() => {
     if (initialData && clients) {
         const client = clients.find(c => c.id === initialData.clientId);
@@ -342,6 +358,9 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
 
   const electricalItems = form.watch('electricalItems');
   const hydraulicItems = form.watch('hydraulicItems');
+  const serviceItems = form.watch('serviceItems');
+  const materialItems = form.watch('materialItems');
+  const includeMaterialList = form.watch('includeMaterialList');
   const paintingRooms = form.watch('paintingRooms');
 
   const issueInvoice = form.watch('issueInvoice');
@@ -418,14 +437,19 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
           laborCost = values.electricalItems.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0);
         } else if (values.serviceType === 'Hidráulica' && values.hydraulicItems) {
           laborCost = values.hydraulicItems.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0);
-        } else if (values.profit) { // profit from form is the labor cost
+        } else if (values.serviceItems && values.serviceItems.length > 0) {
+          laborCost = values.serviceItems.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0);
+        } else if (values.profit) {
           laborCost = values.profit;
         }
       }
       
-      const materialCost = values.materialCost || 0;
+      let materialCost = values.materialCost || 0;
+      if (values.includeMaterialList && values.materialItems) {
+        materialCost = values.materialItems.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0);
+      }
+      
       const subtotal = laborCost + materialCost;
-
       const total = values.issueInvoice && values.invoiceTaxRate && values.invoiceTaxRate > 0
         ? subtotal / (1 - (values.invoiceTaxRate / 100))
         : subtotal;
@@ -473,10 +497,24 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
       });
       return;
     }
+    const serviceType = form.getValues('serviceType');
+    
+    // Collect item names to provide more context to AI
+    let items: string[] = [];
+    if (serviceType === 'Elétrica') {
+      items = (form.getValues('electricalItems')?.map(i => i.name).filter(Boolean) as string[]) || [];
+    } else if (serviceType === 'Hidráulica') {
+      items = (form.getValues('hydraulicItems')?.map(i => i.name).filter(Boolean) as string[]) || [];
+    } else {
+      items = (form.getValues('serviceItems')?.map(i => i.name).filter(Boolean) as string[]) || [];
+    }
+
     startAiTransition(async () => {
       const result = await getTaskSuggestionsAction({
         clientName,
         clientDescription,
+        serviceType,
+        items,
       });
       if (result.error) {
         toast({ variant: 'destructive', title: 'Erro', description: result.error });
@@ -489,8 +527,8 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
   const workDays = budgetType === 'daily' && period?.from && period?.to ? differenceInCalendarDays(period.to, period.from) + 1 : 0;
   const dailyRateValue = form.watch('dailyRate') || 0;
   
-  const materialCost = form.watch('materialCost') || 0;
   let laborCost = 0;
+  let materialCost = 0;
 
   if (budgetType === 'daily') {
     laborCost = workDays * dailyRateValue;
@@ -501,9 +539,17 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
       laborCost = electricalItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
     } else if (serviceType === 'Hidráulica') {
       laborCost = hydraulicItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
+    } else if (serviceItems && serviceItems.length > 0 && serviceItems[0].name !== '') {
+      laborCost = serviceItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
     } else {
       laborCost = form.watch('profit') || 0;
     }
+  }
+
+  if (includeMaterialList) {
+    materialCost = materialItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0;
+  } else {
+    materialCost = form.watch('materialCost') || 0;
   }
 
   const subtotal = laborCost + materialCost;
@@ -849,11 +895,21 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                 Adicionar Outro Item de Pintura
               </Button>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-6 items-end">
                 <div className="space-y-2">
                     <FormLabel>Área Total (m²)</FormLabel>
                     <div className="flex h-10 w-full items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm font-bold">
                         {totalPaintingArea.toFixed(2)} m²
+                    </div>
+                </div>
+                <div className="space-y-2 col-span-1 md:col-span-2">
+                   <div className="flex items-center justify-end gap-2 px-4 py-2 bg-background/50 rounded-lg border border-primary/20 h-10">
+                      <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Subtotal Pintura:</span>
+                      <span className="text-lg font-bold text-primary">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                          totalPaintingArea * sqMetersPrice * paintCoats
+                        )}
+                      </span>
                     </div>
                 </div>
                 <FormField
@@ -992,15 +1048,26 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                     </div>
                 )
               })}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => electricalAppend({ name: '', quantity: 1, value: 0 })}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar Item
-              </Button>
+              <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => electricalAppend({ name: '', quantity: 1, value: 0 })}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Adicionar Item
+                </Button>
+                
+                <div className="flex items-center gap-2 px-4 py-2 bg-background/50 rounded-lg border border-primary/20">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Subtotal Elétrica:</span>
+                  <span className="text-lg font-bold text-primary">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                      electricalItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0
+                    )}
+                  </span>
+                </div>
+              </div>
             </div>
           </Card>
         )}
@@ -1110,15 +1177,121 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                     </div>
                 )
               })}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => hydraulicAppend({ name: '', quantity: 1, value: 0 })}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar Item
-              </Button>
+              <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => hydraulicAppend({ name: '', quantity: 1, value: 0 })}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Adicionar Item
+                </Button>
+
+                <div className="flex items-center gap-2 px-4 py-2 bg-background/50 rounded-lg border border-primary/20">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Subtotal Hidráulica:</span>
+                  <span className="text-lg font-bold text-primary">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                      hydraulicItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {budgetType === 'task' && serviceType !== 'Pintura' && serviceType !== 'Elétrica' && serviceType !== 'Hidráulica' && (
+          <Card className="bg-muted/50 p-6">
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-lg">Itens do Serviço: {serviceType}</CardTitle>
+              <CardDescription>Descreva cada item e seu valor unitário.</CardDescription>
+            </CardHeader>
+            <div className="space-y-4">
+              {serviceItemFields.map((field, index) => {
+                const item = serviceItems?.[index];
+                const itemTotal = (item?.quantity || 0) * (item?.value || 0);
+
+                return (
+                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-end gap-2 border-b pb-4 last:border-0 last:pb-0">
+                      <FormField
+                        control={form.control}
+                        name={`serviceItems.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Descrição do Item</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Ex: Mão de obra especializada" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`serviceItems.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Qtd.</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="1" {...field} className="w-16" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`serviceItems.${index}.value`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>R$ Unit.</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="0.00" {...field} className="w-24" />
+                            </FormControl>
+                             <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <div className="space-y-2">
+                        <FormLabel className={cn(index > 0 && "sr-only")}>R$ Total</FormLabel>
+                        <div className="flex h-10 w-24 items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
+                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(itemTotal)}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => serviceItemRemove(index)}
+                        disabled={serviceItemFields.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                )
+              })}
+              
+              <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => serviceItemAppend({ name: '', quantity: 1, value: 0 })}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Adicionar Item
+                </Button>
+
+                <div className="flex items-center gap-2 px-4 py-2 bg-background/50 rounded-lg border border-primary/20">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Subtotal {serviceType}:</span>
+                  <span className="text-lg font-bold text-primary">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                      serviceItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0
+                    )}
+                  </span>
+                </div>
+              </div>
             </div>
           </Card>
         )}
@@ -1282,21 +1455,35 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                 </Button>
               </FormDescription>
               {suggestions.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <p className="text-sm font-medium">Sugestões da IA:</p>
+                <div className="mt-4 p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                    <Sparkles className="h-4 w-4" />
+                    <span>Sugestões Estratégicas</span>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {suggestions.map((s, i) => (
                       <Button
                         key={i}
                         type="button"
-                        variant="secondary"
+                        variant="outline"
                         size="sm"
-                        onClick={() => form.setValue('task', s)}
+                        className="bg-background/50 hover:bg-primary hover:text-primary-foreground border-primary/20 transition-all duration-200"
+                        onClick={() => {
+                          const currentTask = form.getValues('task');
+                          const newValue = currentTask 
+                            ? `${currentTask}\n- ${s}` 
+                            : s;
+                          form.setValue('task', newValue);
+                        }}
                       >
+                        <PlusCircle className="mr-1.5 h-3.5 w-3.5 opacity-60" />
                         {s}
                       </Button>
                     ))}
                   </div>
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Clique nas sugestões para adicioná-las à descrição do serviço.
+                  </p>
                 </div>
               )}
               <FormMessage />
@@ -1373,41 +1560,153 @@ export function BudgetForm({ initialData, budgetId, preselectedClientId, presele
                   </FormItem>
               )}
               />
+              <div className="col-span-1 md:col-span-2 flex justify-end">
+                <div className="flex items-center gap-2 px-4 py-2 bg-background/50 rounded-lg border border-primary/20">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total de Diárias ({workDays} dias):</span>
+                  <span className="text-lg font-bold text-primary">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(workDays * dailyRateValue)}
+                  </span>
+                </div>
+              </div>
           </div>
         )}
 
-        {budgetType === 'task' && serviceType !== 'Pintura' && serviceType !== 'Elétrica' && serviceType !== 'Hidráulica' && (
-            <FormField
-              control={form.control}
-              name="profit"
-              render={({ field }) => (
+        <Card className="p-6 bg-muted/30 border-dashed">
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">Materiais do Projeto</FormLabel>
+                <FormDescription>Ative para listar os materiais que você irá comprar.</FormDescription>
+              </div>
+              <FormField
+                control={form.control}
+                name="includeMaterialList"
+                render={({ field }) => (
                   <FormItem>
-                  <FormLabel>Valor da Mão de Obra (R$)</FormLabel>
-                  <FormControl>
-                      <Input type="number" placeholder="500" {...field} value={field.value || ''}/>
-                  </FormControl>
-                  <FormMessage />
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
-              )}
-            />
-        )}
+                )}
+              />
+            </div>
 
-        <FormField
-            control={form.control}
-            name="materialCost"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Custo com Material (R$)</FormLabel>
-                <FormControl>
-                    <Input type="number" placeholder="0" {...field} value={field.value || ''}/>
-                </FormControl>
-                 <FormDescription>
-                    Insira o custo total com materiais para este projeto.
-                </FormDescription>
-                <FormMessage />
-                </FormItem>
+            {includeMaterialList ? (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                  <Package className="h-4 w-4" />
+                  <span>Lista de Materiais Necessários</span>
+                </div>
+                {materialItemFields.map((field, index) => {
+                  const item = materialItems?.[index];
+                  const itemTotal = (item?.quantity || 0) * (item?.value || 0);
+
+                  return (
+                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-end gap-2 border-b pb-4 last:border-0 last:pb-0">
+                      <FormField
+                        control={form.control}
+                        name={`materialItems.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Material</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ex: Cimento 50kg" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`materialItems.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>Qtd.</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="1" {...field} className="w-16" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`materialItems.${index}.value`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={cn(index > 0 && "sr-only")}>R$ Unit.</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="0.00" {...field} className="w-24" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="space-y-2">
+                        <FormLabel className={cn(index > 0 && "sr-only")}>R$ Total</FormLabel>
+                        <div className="flex h-10 w-24 items-center rounded-md border border-input bg-background/50 px-3 py-2 text-sm">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(itemTotal)}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => materialRemove(index)}
+                        disabled={materialItemFields.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+
+                <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => materialAppend({ name: '', quantity: 1, value: 0 })}
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Adicionar Material
+                  </Button>
+
+                  <div className="flex items-center gap-2 px-4 py-2 bg-background/50 rounded-lg border border-primary/20">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Custo Total de Materiais:</span>
+                    <span className="text-lg font-bold text-emerald-500">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                        materialItems?.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0) || 0
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <FormField
+                control={form.control}
+                name="materialCost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Custo de Material (R$)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="Valor estimado"
+                        {...field}
+                        value={field.value || ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
-        />
+          </div>
+        </Card>
         
         <Card className="bg-muted/50">
           <CardHeader>
