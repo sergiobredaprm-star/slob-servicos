@@ -25,9 +25,10 @@ const chartConfig = {
 
 type OverviewProps = {
   budgets: Budget[] | null | undefined;
+  year?: string;
 };
 
-export function Overview({ budgets }: OverviewProps) {
+export function Overview({ budgets, year }: OverviewProps) {
 
   const chartData = useMemo(() => {
     if (!budgets) return [];
@@ -38,7 +39,7 @@ export function Overview({ budgets }: OverviewProps) {
       material: 0,
     }));
     
-    const currentYear = new Date().getFullYear();
+    const yearToFilter = year && year !== 'all' ? parseInt(year, 10) : new Date().getFullYear();
 
     for (const budget of budgets) {
       if (budget.registrationDate) {
@@ -47,7 +48,7 @@ export function Overview({ budgets }: OverviewProps) {
           : (budget.registrationDate as any).toDate 
             ? (budget.registrationDate as any).toDate() 
             : new Date(budget.registrationDate as any);
-        if (registrationDate.getFullYear() === currentYear) {
+        if (registrationDate.getFullYear() === yearToFilter) {
             const month = registrationDate.getMonth();
             monthlyTotals[month].profit += budget.profit || 0;
             monthlyTotals[month].material += budget.materialCost || 0;
@@ -56,7 +57,7 @@ export function Overview({ budgets }: OverviewProps) {
     }
 
     return monthlyTotals;
-  }, [budgets]);
+  }, [budgets, year]);
 
 
   return (
