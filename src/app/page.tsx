@@ -18,7 +18,7 @@ import { ReportsTab } from '@/components/app/dashboard/reports-tab';
 import { StatusDistributionChart } from '@/components/app/dashboard/status-distribution-chart';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Budget } from '@/lib/types';
-import { collection, query, Timestamp } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { useMemo, useState } from 'react';
 import {
   Select,
@@ -28,6 +28,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { parseDate } from '@/lib/utils';
+import {
+  MonthBudgetsDialog,
+  MonthData,
+} from '@/components/app/dashboard/month-budgets-dialog';
 
 export default function DashboardPage() {
   const { firestore, user } = useFirebase();
@@ -43,6 +47,7 @@ export default function DashboardPage() {
   const { data: allBudgets } = useCollection<Budget>(budgetsQuery);
 
   const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [selectedMonth, setSelectedMonth] = useState<MonthData | null>(null);
 
   const years = useMemo(() => {
     if (!allBudgets) return [];
@@ -65,6 +70,23 @@ export default function DashboardPage() {
     });
   }, [allBudgets, selectedYear]);
 
+  const activeYearForChart = useMemo(() => {
+    return selectedYear === 'all'
+      ? new Date().getFullYear()
+      : parseInt(selectedYear, 10);
+  }, [selectedYear]);
+
+  const monthBudgets = useMemo(() => {
+    if (!selectedMonth || !allBudgets) return [];
+    return allBudgets.filter((budget) => {
+      const date = parseDate(budget.registrationDate);
+      if (!date) return false;
+      return (
+        date.getFullYear() === selectedMonth.year &&
+        date.getMonth() === selectedMonth.monthIndex
+      );
+    });
+  }, [allBudgets, selectedMonth]);
 
   return (
     <div className="flex-1 space-y-4">
@@ -95,12 +117,14 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
         </TabsList>
+
         <TabsContent value="overview" className="space-y-4">
           <StatsCards budgets={filteredBudgets} />
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -108,21 +132,32 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Orçamentos</CardTitle>
                 <CardDescription>
-                  {selectedYear === 'all' 
-                    ? `Visão geral dos seus orçamentos no ano de ${new Date().getFullYear()}.` 
-                    : `Visão geral dos seus orçamentos em ${selectedYear}.`}
+                  {selectedYear === 'all'
+                    ? `Visão geral dos seus orçamentos no ano de ${new Date().getFullYear()}. Clique em uma barra para detalhar o mês.`
+                    : `Visão geral dos seus orçamentos em ${selectedYear}. Clique em uma barra para detalhar o mês.`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Overview budgets={filteredBudgets} year={selectedYear} />
+                <Overview
+                  budgets={filteredBudgets}
+                  year={selectedYear}
+                  onMonthClick={(monthIndex, monthName) =>
+                    setSelectedMonth({
+                      monthIndex,
+                      monthName,
+                      year: activeYearForChart,
+                    })
+                  }
+                />
               </CardContent>
             </Card>
             <Card className="col-span-4 lg:col-span-3">
               <CardHeader>
                 <CardTitle>Orçamentos Recentes</CardTitle>
                 <CardDescription>
-                  {`Você tem ${filteredBudgets?.length || 0
-                    } orçamentos registrados no total.`}
+                  {`Você tem ${
+                    filteredBudgets?.length || 0
+                  } orçamentos registrados no total.`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -131,15 +166,27 @@ export default function DashboardPage() {
             </Card>
           </div>
         </TabsContent>
+
         <TabsContent value="analytics" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <StatusDistributionChart budgets={filteredBudgets} />
           </div>
         </TabsContent>
+
         <TabsContent value="reports" className="space-y-4">
           <ReportsTab />
         </TabsContent>
       </Tabs>
+
+      {/* Modal detalhado de orçamentos do mês clicado no gráfico */}
+      <MonthBudgetsDialog
+        open={!!selectedMonth}
+        onOpenChange={(open) => {
+          if (!open) setSelectedMonth(null);
+        }}
+        monthData={selectedMonth}
+        budgets={monthBudgets}
+      />
     </div>
   );
 }
