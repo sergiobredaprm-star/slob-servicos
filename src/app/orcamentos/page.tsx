@@ -80,6 +80,28 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
+const getPaymentStatus = (budget: Budget) => {
+  const totalPaid = budget.paymentHistory?.reduce((acc, p) => acc + p.amount, 0) || 0;
+
+  if (budget.status === 'cancelado') {
+      return 'N/A';
+  }
+
+  if (totalPaid >= budget.total && budget.total > 0) {
+      return 'Pago';
+  }
+  
+  if (totalPaid > 0) {
+      return 'Parcial';
+  }
+
+  if (budget.status === 'ativo' || budget.status === 'concluído') {
+    return 'Aguardando';
+  }
+
+  return 'N/A';
+};
+
 function OrcamentosPageComponent() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
@@ -91,12 +113,17 @@ function OrcamentosPageComponent() {
   const [taskFilter, setTaskFilter] = useState<string>('');
   const [observationFilter, setObservationFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<BudgetStatus | null>(null);
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string | null>(null);
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
 
   useEffect(() => {
     const statusFromUrl = searchParams.get('status');
     if (statusFromUrl && ['prospecção', 'ativo', 'concluído', 'cancelado'].includes(statusFromUrl)) {
       setStatusFilter(statusFromUrl as BudgetStatus);
+    }
+    const paymentStatusFromUrl = searchParams.get('paymentStatus');
+    if (paymentStatusFromUrl && ['Pago', 'Parcial', 'Aguardando', 'N/A'].includes(paymentStatusFromUrl)) {
+      setPaymentStatusFilter(paymentStatusFromUrl);
     }
   }, [searchParams]);
 
@@ -123,15 +150,16 @@ function OrcamentosPageComponent() {
       const clientMatch = clientFilter ? budget.clientId === clientFilter : true;
       const taskMatch = taskFilter ? (budget.task || '').toLowerCase().includes(taskFilter.toLowerCase()) : true;
       const statusMatch = statusFilter ? budget.status === statusFilter : true;
+      const paymentStatusMatch = paymentStatusFilter ? getPaymentStatus(budget) === paymentStatusFilter : true;
       const observationMatch = observationFilter
         ? (budget.clientDescription || '').toLowerCase().includes(observationFilter.toLowerCase()) ||
           (budget.paymentHistory || []).some(payment =>
             (payment.notes || '').toLowerCase().includes(observationFilter.toLowerCase())
           )
         : true;
-      return clientMatch && taskMatch && statusMatch && observationMatch;
+      return clientMatch && taskMatch && statusMatch && paymentStatusMatch && observationMatch;
     })
-  }, [budgets, clientFilter, taskFilter, statusFilter, observationFilter]);
+  }, [budgets, clientFilter, taskFilter, statusFilter, paymentStatusFilter, observationFilter]);
   
   const filteredSummary = useMemo(() => {
     if (!filteredBudgets || filteredBudgets.length === 0) {
@@ -143,14 +171,19 @@ function OrcamentosPageComponent() {
     if (total > 0) {
       const clientName = clientFilter && clients ? clients.find(c => c.id === clientFilter)?.name : null;
       let label = 'Total dos Filtros:';
-      if(clientName && !statusFilter) {
+      if (clientName && !statusFilter && !paymentStatusFilter) {
           label = `Total (${clientName}):`;
-      } else if (statusFilter && !clientFilter) {
+      } else if (statusFilter && !clientFilter && !paymentStatusFilter) {
           label = `Total (${statusFilter}):`;
-      } else if (statusFilter && clientName) {
-          label = `Total (${clientName} / ${statusFilter}):`;
+      } else if (paymentStatusFilter && !clientFilter && !statusFilter) {
+          label = `Total (Pagamento ${paymentStatusFilter}):`;
+      } else if (statusFilter || clientName || paymentStatusFilter) {
+          const parts = [];
+          if (clientName) parts.push(clientName);
+          if (statusFilter) parts.push(statusFilter);
+          if (paymentStatusFilter) parts.push(`Pagamento: ${paymentStatusFilter}`);
+          label = `Total (${parts.join(' / ')}):`;
       }
-
 
       return (
         <div className="flex items-center text-sm font-medium">
@@ -160,7 +193,7 @@ function OrcamentosPageComponent() {
       );
     }
     return null;
-  }, [filteredBudgets, clientFilter, statusFilter, clients]);
+  }, [filteredBudgets, clientFilter, statusFilter, paymentStatusFilter, clients]);
 
   const getClientNameFromBudget = (budget: Budget) => {
     if (budget.clientName) return budget.clientName;
@@ -171,28 +204,6 @@ function OrcamentosPageComponent() {
     if (budget.task) return budget.task;
     return 'Tarefa não informada';
   }
-
-  const getPaymentStatus = (budget: Budget) => {
-    const totalPaid = budget.paymentHistory?.reduce((acc, p) => acc + p.amount, 0) || 0;
-
-    if (budget.status === 'cancelado') {
-        return 'N/A';
-    }
-
-    if (totalPaid >= budget.total && budget.total > 0) {
-        return 'Pago';
-    }
-    
-    if (totalPaid > 0) {
-        return 'Parcial';
-    }
-
-    if (budget.status === 'ativo' || budget.status === 'concluído') {
-      return 'Aguardando';
-    }
-
-    return 'N/A';
-  };
   
   const handleDeleteClick = (budgetId: string) => {
     setSelectedBudgetId(budgetId);
@@ -309,6 +320,18 @@ function OrcamentosPageComponent() {
                 <SelectItem value="ativo">Ativo</SelectItem>
                 <SelectItem value="concluído">Concluído</SelectItem>
                 <SelectItem value="cancelado">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={paymentStatusFilter ?? 'all'} onValueChange={(value) => setPaymentStatusFilter(value === 'all' ? null : value)}>
+              <SelectTrigger className="w-full sm:w-auto md:w-[180px]">
+                <SelectValue placeholder="Pagamento..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Pagamentos</SelectItem>
+                <SelectItem value="Pago">Pago</SelectItem>
+                <SelectItem value="Parcial">Parcial</SelectItem>
+                <SelectItem value="Aguardando">Aguardando</SelectItem>
+                <SelectItem value="N/A">N/A</SelectItem>
               </SelectContent>
             </Select>
             {filteredSummary && (
