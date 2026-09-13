@@ -174,7 +174,9 @@ export function ReportsTab() {
       .filter((b) => b.status === 'cancelado')
       .reduce((sum, b) => sum + b.total, 0);
   
-  const totalProfit = filteredData.reduce((sum, b) => sum + (b.profit || 0), 0);
+  const totalProfit = filteredData
+    .filter((b) => b.status === 'ativo' || b.status === 'concluído')
+    .reduce((sum, b) => sum + (b.profit || 0), 0);
   const totalMaterial = filteredData.reduce((sum, b) => sum + (b.materialCost || 0), 0);
   const grandTotal = filteredData.reduce((sum, b) => sum + b.total, 0);
 

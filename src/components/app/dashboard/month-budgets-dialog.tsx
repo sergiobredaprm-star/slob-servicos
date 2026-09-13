@@ -77,7 +77,9 @@ export function MonthBudgetsDialog({
 
     for (const b of budgets) {
       total += b.total || 0;
-      profit += b.profit || 0;
+      if (b.status === 'ativo' || b.status === 'concluído') {
+        profit += b.profit || 0;
+      }
       material += b.materialCost || 0;
     }
 

@@ -51,7 +51,9 @@ export function Overview({ budgets, year, onMonthClick }: OverviewProps) {
       const date = parseDate(budget.registrationDate);
       if (date && date.getFullYear() === yearToFilter) {
         const month = date.getMonth();
-        monthlyTotals[month].profit += budget.profit || 0;
+        if (budget.status === 'ativo' || budget.status === 'concluído') {
+          monthlyTotals[month].profit += budget.profit || 0;
+        }
         monthlyTotals[month].material += budget.materialCost || 0;
         monthlyTotals[month].total += budget.total || 0;
         monthlyTotals[month].count += 1;
