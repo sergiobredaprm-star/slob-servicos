@@ -65,7 +65,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { deletePaymentFromBudget } from '@/lib/firebase/services';
+import { deletePaymentFromBudget, duplicateBudget } from '@/lib/firebase/services';
 import { useToast } from '@/hooks/use-toast';
 import { getCompanyProfile } from '@/lib/firebase/company-services';
 import Link from 'next/link';
@@ -228,6 +228,25 @@ export default function BudgetDetailsPage() {
     } finally {
       setIsDeleteDialogOpen(false);
       setPaymentToDelete(null);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!user || !firestore || !budget) return;
+    try {
+      await duplicateBudget(firestore, user.uid, budget);
+      toast({
+        title: 'Orçamento Duplicado!',
+        description: 'Uma nova cópia em prospecção foi criada com sucesso.',
+      });
+      router.push('/orcamentos');
+    } catch (error) {
+      console.error('Erro ao duplicar orçamento:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao Duplicar',
+        description: 'Não foi possível duplicar o orçamento.',
+      });
     }
   };
 
@@ -435,6 +454,10 @@ export default function BudgetDetailsPage() {
               <CardDescription>ID do Orçamento: {budget.id}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleDuplicate}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicar
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)}>
                   <Share2 className="mr-2 h-4 w-4" />
                   Compartilhar

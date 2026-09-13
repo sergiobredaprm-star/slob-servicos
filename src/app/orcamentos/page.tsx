@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle, Trash2, ChevronsUpDown, Check } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, ChevronsUpDown, Check, Copy } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -42,7 +42,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { deleteBudget } from '@/lib/firebase/services';
+import { deleteBudget, duplicateBudget } from '@/lib/firebase/services';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -205,6 +205,24 @@ function OrcamentosPageComponent() {
     return 'Tarefa não informada';
   }
   
+  const handleDuplicateClick = async (budget: Budget) => {
+    if (!user || !firestore) return;
+    try {
+      await duplicateBudget(firestore, user.uid, budget);
+      toast({
+        title: 'Orçamento Duplicado!',
+        description: `Uma nova cópia em prospecção foi criada.`,
+      });
+    } catch (error) {
+      console.error('Erro ao duplicar orçamento:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao Duplicar',
+        description: 'Não foi possível duplicar o orçamento.',
+      });
+    }
+  };
+
   const handleDeleteClick = (budgetId: string) => {
     setSelectedBudgetId(budgetId);
     setIsDeleteDialogOpen(true);
@@ -403,6 +421,10 @@ function OrcamentosPageComponent() {
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link href={`/orcamentos/${budget.id}/editar`}>Editar</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicateClick(budget)}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            Duplicar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem

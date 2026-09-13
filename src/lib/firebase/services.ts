@@ -105,6 +105,23 @@ export async function deleteBudget(firestore: Firestore, userId: string, budgetI
     return deleteDocumentNonBlocking(budgetDoc);
 }
 
+export async function duplicateBudget(firestore: Firestore, userId: string, budget: Budget) {
+    if (!userId || !budget) {
+        throw new Error("User ID and Budget are required to duplicate a budget.");
+    }
+    const { id, paymentHistory, registrationDate, ...rest } = budget;
+
+    const duplicatedData: Omit<Budget, 'id'> = {
+        ...rest,
+        task: budget.task ? `${budget.task} (Cópia)` : 'Orçamento (Cópia)',
+        status: 'prospecção',
+        registrationDate: Timestamp.now(),
+        paymentHistory: [],
+    };
+
+    return saveBudget(firestore, userId, duplicatedData);
+}
+
 export async function addPaymentToBudget(firestore: Firestore, userId: string, budgetId: string, payment: Omit<Payment, 'id'>) {
     if (!userId || !budgetId) {
         throw new Error("User ID and Budget ID are required to add a payment.");
