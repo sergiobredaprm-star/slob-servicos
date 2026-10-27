@@ -258,16 +258,19 @@ export default function BudgetDetailsPage() {
 
     let message = '';
 
-    if (companyProfile?.companyName) {
-      message += `*${companyProfile.companyName.toUpperCase()}*\n`;
-      if (companyProfile.companyTaxId)
-        message += `CNPJ: ${companyProfile.companyTaxId}\n`;
-      if (companyProfile.companyPhone)
-        message += `Tel: ${companyProfile.companyPhone}\n`;
-      if (companyProfile.companyEmail)
-        message += `Email: ${companyProfile.companyEmail}\n`;
-      message += '---------------------------------\n\n';
+    const companyName = companyProfile?.companyName || 'SLOB_SERVIÇOS';
+    const companyTaxId = companyProfile?.companyTaxId || '61.431.163/0001-13';
+    let companyPhone = companyProfile?.companyPhone || '21984387661';
+    if (!companyPhone.includes('(PIX)')) {
+      companyPhone += '(PIX)';
     }
+    const companyEmail = companyProfile?.companyEmail || 'sergio.breda.prm@gmail.com';
+
+    message += `*${companyName.toUpperCase()}*\n`;
+    if (companyTaxId) message += `CNPJ: ${companyTaxId}\n`;
+    if (companyPhone) message += `Tel.: ${companyPhone}\n`;
+    if (companyEmail) message += `Email: ${companyEmail}\n`;
+    message += '---------------------------------\n\n';
 
     message += '*ORÇAMENTO DE SERVIÇOS*\n\n';
     message += `*Cliente:* ${budget.clientName}\n`;
@@ -281,9 +284,65 @@ export default function BudgetDetailsPage() {
       message += `*Prazo de Entrega:* ${formatDate(budget.deadline)}\n`;
     }
     message += `*Serviço:* ${budget.serviceType}\n`;
-    message += `*Tarefa:* ${budget.task}\n\n`;
 
-    message += '---------------------------------\n';
+    const formatItemLine = (name: string, quantity?: number, unitValue?: number) => {
+      const qty = quantity ?? 1;
+      const unit = unitValue ?? 0;
+      const total = qty * unit;
+      if (qty !== 1 && unit > 0) {
+        return ` • ${name} (${qty}x ${formatCurrency(unit)}): ${formatCurrency(total)}`;
+      } else if (total > 0) {
+        return ` • ${name}: ${formatCurrency(total)}`;
+      }
+      return ` • ${name}`;
+    };
+
+    const serviceItemsList = (budget.serviceItems && budget.serviceItems.length > 0 && budget.serviceItems[0].name !== '')
+      ? budget.serviceItems.filter(i => i.name)
+      : (budget.electricalItems && budget.electricalItems.length > 0 && budget.electricalItems[0].name !== '')
+      ? budget.electricalItems.filter(i => i.name)
+      : (budget.hydraulicItems && budget.hydraulicItems.length > 0 && budget.hydraulicItems[0].name !== '')
+      ? budget.hydraulicItems.filter(i => i.name)
+      : [];
+
+    message += `*Tarefa:*\n`;
+    if (budget.task && budget.task.trim() !== '') {
+      message += `${budget.task.trim()}\n`;
+    }
+
+    if (serviceItemsList.length > 0) {
+      serviceItemsList.forEach((item) => {
+        message += `${formatItemLine(item.name, item.quantity, item.value)}\n`;
+      });
+    } else if (budget.serviceType === 'Pintura' && budget.paintingRooms && budget.paintingRooms.length > 0) {
+      budget.paintingRooms.forEach((room) => {
+        const typeLabel = room.type === 'completo' ? 'Completo (Parede+Teto)' : room.type === 'paredes' ? 'Só Paredes' : 'Só Teto';
+        const deductions = room.deductionsArea && room.deductionsArea > 0 ? ` [Dedução: ${room.deductionsArea}m²]` : '';
+        message += ` • ${room.name}: ${typeLabel} (${room.calculatedArea.toFixed(2)} m²)${deductions}\n`;
+      });
+      const totalArea = budget.paintingRooms.reduce((acc, r) => acc + r.calculatedArea, 0);
+      message += `Área Líquida Total: ${totalArea.toFixed(2)} m² | Valor/m²: ${formatCurrency(budget.sqMetersPrice || 0)}\n`;
+    }
+
+    // Material list section
+    const materialItemsList = (budget.materialItems && budget.materialItems.length > 0 && budget.materialItems[0].name !== '')
+      ? budget.materialItems.filter(i => i.name)
+      : [];
+
+    if (materialItemsList.length > 0) {
+      message += '\n---------------------------------\n';
+      message += '*LISTA DE MATERIAIS*\n';
+      message += '---------------------------------\n\n';
+
+      materialItemsList.forEach((item) => {
+        message += `${formatItemLine(item.name, item.quantity, item.value)}\n`;
+      });
+
+      const totalMaterials = materialItemsList.reduce((acc, item) => acc + ((item.quantity || 0) * (item.value || 0)), 0);
+      message += `\n*Total dos Materiais:* ${formatCurrency(budget.materialCost || totalMaterials)}\n`;
+    }
+
+    message += '\n---------------------------------\n';
     message += '*DETALHES DO ORÇAMENTO*\n';
     message += '---------------------------------\n\n';
 
@@ -302,60 +361,6 @@ export default function BudgetDetailsPage() {
       message += `*Valor da diária:* ${formatCurrency(budget.dailyRate || 0)}\n\n`;
     } else {
       message += `*Tipo:* Por Tarefa (Valor Fechado)\n\n`;
-      
-      if (budget.serviceType === 'Pintura' && budget.paintingRooms && budget.paintingRooms.length > 0) {
-        message += '*Detalhamento de Pintura por Cômodo:*\n';
-        budget.paintingRooms.forEach((room) => {
-          const typeLabel = room.type === 'completo' ? 'Completo (Parede+Teto)' : room.type === 'paredes' ? 'Só Paredes' : 'Só Teto';
-          const deductions = room.deductionsArea && room.deductionsArea > 0 ? ` [Dedução: ${room.deductionsArea}m²]` : '';
-          message += ` • *${room.name}*: ${typeLabel} (${room.calculatedArea.toFixed(2)} m²)${deductions}\n`;
-        });
-        const totalArea = budget.paintingRooms.reduce((acc, r) => acc + r.calculatedArea, 0);
-        message += `\n*Área Líquida Total:* ${totalArea.toFixed(2)} m²\n`;
-        message += `*Valor por m²:* ${formatCurrency(budget.sqMetersPrice || 0)}\n`;
-        message += `*Nº de Demãos:* ${budget.paintCoats || 1}\n\n`;
-      } else if (budget.serviceType === 'Pintura' && budget.wallHeight && budget.wallWidth) {
-        // Legacy support
-        const area = budget.wallHeight * budget.wallWidth;
-        message += `*Detalhes da Pintura:*\n`;
-        message += ` • Área: ${budget.wallHeight}m x ${budget.wallWidth}m = ${area.toFixed(2)} m²\n`;
-        message += ` • Valor por m²: ${formatCurrency(budget.sqMetersPrice || 0)}\n`;
-        message += ` • Nº Demãos: ${budget.paintCoats || 1}\n\n`;
-      }
-
-      if (
-        budget.serviceType === 'Elétrica' &&
-        budget.electricalItems &&
-        budget.electricalItems.length > 0
-      ) {
-        message += '*Itens de Elétrica:*\n';
-        budget.electricalItems.forEach((item) => {
-          const itemTotal = item.quantity * item.value;
-          message += ` • ${item.name} (Qtd: ${
-            item.quantity
-          }, V.Un: ${formatCurrency(item.value)}) = *${formatCurrency(
-            itemTotal
-          )}*\n`;
-        });
-        message += '\n';
-      }
-
-      if (
-        budget.serviceType === 'Hidráulica' &&
-        budget.hydraulicItems &&
-        budget.hydraulicItems.length > 0
-      ) {
-        message += '*Itens de Hidráulica:*\n';
-        budget.hydraulicItems.forEach((item) => {
-          const itemTotal = item.quantity * item.value;
-          message += ` • ${item.name} (Qtd: ${
-            item.quantity
-          }, V.Un: ${formatCurrency(item.value)}) = *${formatCurrency(
-            itemTotal
-          )}*\n`;
-        });
-        message += '\n';
-      }
     }
 
     message += '---------------------------------\n';
@@ -379,10 +384,8 @@ export default function BudgetDetailsPage() {
     }
 
     message += `\n*VALOR TOTAL:* *${formatCurrency(budget.total)}*\n\n`;
-    message += `_Este orçamento é válido por 15 dias._\n`;
-    if (companyProfile?.companyName) {
-      message += `\nAtenciosamente,\n*${companyProfile.companyName}*`;
-    }
+    message += `_Este orçamento é válido por 15 dias._\n\n`;
+    message += `Atenciosamente,\n\nSergio Brêda`;
 
     return message;
   };
@@ -556,6 +559,80 @@ export default function BudgetDetailsPage() {
                 <p>Valor por m²: <span className="font-bold">{formatCurrency(budget.sqMetersPrice || 0)}</span></p>
                 <p>Demãos: <span className="font-bold">{budget.paintCoats || 1}</span></p>
               </div>
+            </div>
+          )}
+
+          {((budget.serviceItems && budget.serviceItems.length > 0 && budget.serviceItems[0].name !== '') ||
+            (budget.electricalItems && budget.electricalItems.length > 0 && budget.electricalItems[0].name !== '') ||
+            (budget.hydraulicItems && budget.hydraulicItems.length > 0 && budget.hydraulicItems[0].name !== '')) && (
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-semibold text-base">Itens do Serviço</h3>
+              <Card>
+                <CardContent className="pt-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Descrição do Item</TableHead>
+                        <TableHead className="w-24 text-center">Qtd.</TableHead>
+                        <TableHead className="w-32 text-right">R$ Unit.</TableHead>
+                        <TableHead className="w-32 text-right">R$ Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(budget.serviceItems?.filter(i => i.name) ||
+                        budget.electricalItems?.filter(i => i.name) ||
+                        budget.hydraulicItems?.filter(i => i.name) || [])
+                        .map((item, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell className="text-center">{item.quantity}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.value)}</TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {formatCurrency((item.quantity || 0) * (item.value || 0))}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {budget.materialItems && budget.materialItems.length > 0 && budget.materialItems[0].name !== '' && (
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-base">Materiais do Projeto</h3>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Total Materiais: <strong className="text-foreground">{formatCurrency(budget.materialCost || 0)}</strong>
+                </span>
+              </div>
+              <Card>
+                <CardContent className="pt-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Material</TableHead>
+                        <TableHead className="w-24 text-center">Qtd.</TableHead>
+                        <TableHead className="w-32 text-right">R$ Unit.</TableHead>
+                        <TableHead className="w-32 text-right">R$ Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {budget.materialItems.filter(i => i.name).map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell className="text-center">{item.quantity}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.value)}</TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatCurrency((item.quantity || 0) * (item.value || 0))}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
             </div>
           )}
 
