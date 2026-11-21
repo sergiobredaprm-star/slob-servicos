@@ -61,6 +61,7 @@ import {
   Clock,
   Send,
   ChevronsUpDown,
+  Search,
 } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import {
@@ -80,6 +81,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { getCompanyProfile } from '@/lib/firebase/company-services';
 
 const statusStyles: { [key in BudgetStatus]: string } = {
@@ -146,6 +148,7 @@ export function ReportsTab() {
   const [filterClientId, setFilterClientId] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('ativos_concluidos');
   const [filterPayment, setFilterPayment] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   const [reportData, setReportData] = useState<Budget[] | null>(null);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
@@ -206,6 +209,7 @@ export function ReportsTab() {
   // Filtragem dos dados carregados
   const filteredData = useMemo(() => {
     if (!reportData) return [];
+    const term = searchTerm.toLowerCase().trim();
 
     return reportData.filter((budget) => {
       // Filtro de Cliente
@@ -233,9 +237,37 @@ export function ReportsTab() {
         paymentMatch = totalPaid > 0;
       }
 
-      return clientMatch && statusMatch && paymentMatch;
+      // Filtro de Busca por Texto / Lançamento / Pagamento
+      let searchMatch = true;
+      if (term) {
+        const matchesBudget =
+          budget.clientName?.toLowerCase().includes(term) ||
+          budget.task?.toLowerCase().includes(term) ||
+          budget.serviceType?.toLowerCase().includes(term) ||
+          formatCurrency(budget.total).toLowerCase().includes(term) ||
+          formatCurrency(totalPaid).toLowerCase().includes(term) ||
+          formatCurrency(remaining).toLowerCase().includes(term);
+
+        // Busca também dentro dos lançamentos de pagamentos (observação, forma, valor, data)
+        const matchesPayments = payments.some((p) => {
+          const notesMatch = p.notes?.toLowerCase().includes(term);
+          const methodMatch = p.method?.toLowerCase().includes(term);
+          const amountMatch = formatCurrency(p.amount).toLowerCase().includes(term);
+          let dateStr = '';
+          try {
+            const dateObj = parseDate(p.date);
+            if (dateObj) dateStr = format(dateObj, 'dd/MM/yyyy');
+          } catch {}
+          const dateMatch = dateStr.includes(term);
+          return Boolean(notesMatch || methodMatch || amountMatch || dateMatch);
+        });
+
+        searchMatch = Boolean(matchesBudget || matchesPayments);
+      }
+
+      return clientMatch && statusMatch && paymentMatch && searchMatch;
     });
-  }, [reportData, filterClientId, filterStatus, filterPayment]);
+  }, [reportData, filterClientId, filterStatus, filterPayment, searchTerm]);
 
   // Totais consolidados
   const totals = useMemo(() => {
@@ -842,6 +874,26 @@ export function ReportsTab() {
                   <p className="text-xs text-muted-foreground mt-1">Lucro de mão de obra previsto</p>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Barra de Pesquisa Rápida */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar por cliente, tarefa, valor, observação ou forma de pagamento..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 bg-background"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Limpar
+                </button>
+              )}
             </div>
 
             {/* Tabela de Serviços e Pagamentos */}
